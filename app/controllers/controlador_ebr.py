@@ -76,7 +76,10 @@ async def validar_codigo_ebr(request: Request, datos: SolicitudCodigoEBR, db: Se
 
 @router.get("/me")
 async def obtener_perfil_ebr(usuario: Usuario = Depends(obtener_usuario_sesion_ebr)):
-    return {"id": str(usuario.id), "username": usuario.username, "nombre_completo": usuario.nombre_completo}
+    return {
+        "id": str(usuario.id), "username": usuario.username, "nombre_completo": usuario.nombre_completo,
+        "rol": usuario.rol.value,  # CU-03: la página usa el rol para mostrar la opción Cargar orden
+    }
 
 
 @router.post("/logout")

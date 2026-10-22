@@ -1,0 +1,337 @@
+{% extends "base_ebr.html" %}
+{% set menu_activo = 'ordenes' %}
+{% block titulo %}Órdenes de trabajo{% endblock %}
+{% block titulo_barra %}Órdenes de trabajo{% endblock %}
+
+{% block estilos %}
+<style>
+    .orden-previa { background: #FFFFFF; border: 1px solid var(--linea); border-radius: 12px; padding: 16px; margin-top: 14px; }
+    .orden-previa.existe { border-left: 5px solid var(--amarillo-oscuro); }
+    .orden-previa.nueva { border-left: 5px solid var(--azul-yobel); }
+    .orden-previa.bloqueada { border-left: 5px solid var(--verde); background: var(--fondo-suave); }
+    .orden-previa-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .orden-previa-cabecera h3 { font-size: 1.05rem; }
+    .decision-opciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .decision-opciones .btn.elegido { box-shadow: 0 0 0 3px rgba(20, 23, 26, 0.85); }
+    details.materiales { margin-top: 12px; }
+    details.materiales summary { cursor: pointer; font-weight: 700; color: var(--azul-yobel-oscuro); padding: 4px 0; }
+    details.materiales .tabla-contenedor { margin-top: 8px; box-shadow: none; }
+    .resumen-carga { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .contador { font-size: 0.85rem; color: var(--texto-suave); margin-top: 10px; }
+</style>
+{% endblock %}
+
+{% block contenido %}
+<div class="encabezado-pagina">
+    <div>
+        <h1>Repositorio de órdenes de trabajo</h1>
+        <p>Órdenes cargadas desde LX. Seleccione una orden para ver su detalle.</p>
+    </div>
+    <div class="filtros">
+        <select id="filtroEstado" aria-label="Filtrar por estado">
+            <option value="">Vigentes (cargadas y en desarrollo)</option>
+            <option value="CARGADA">Cargadas</option>
+            <option value="EN_DESARROLLO">En desarrollo</option>
+            <option value="ELIMINADA">Eliminadas</option>
+            <option value="TODAS">Todas</option>
+        </select>
+        <input type="search" id="filtroBusqueda" placeholder="Buscar orden, producto o código" aria-label="Buscar" maxlength="60">
+        <button type="button" class="btn oculto" id="btnNuevaCarga">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            CARGAR ORDEN
+        </button>
+    </div>
+</div>
+
+<div id="mensajeListado" class="mensaje"></div>
+
+<div class="tabla-contenedor">
+    <table class="tabla">
+        <thead><tr id="encabezadoOrdenes"></tr></thead>
+        <tbody id="cuerpoOrdenes"><tr><td colspan="8" class="vacio">Cargando…</td></tr></tbody>
+    </table>
+</div>
+<p class="contador" id="contador"></p>
+
+<!-- ================= MODAL: CARGAR ÓRDENES ================= -->
+<div class="overlay" id="overlayCarga" role="dialog" aria-modal="true" aria-labelledby="tituloCarga">
+    <div class="modal modal-ancho">
+        <h2 id="tituloCarga">Cargar órdenes de trabajo</h2>
+
+        <div id="pasoArchivo" class="campo" style="margin-top:14px">
+            <label for="inputArchivo">Archivo de LX (.xlsx)</label>
+            <input type="file" id="inputArchivo" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            <p class="ayuda">Tamaño máximo: 10 MB.</p>
+        </div>
+
+        <div id="mensajeCarga" class="mensaje"></div>
+        <div id="pasoVistaPrevia" class="oculto">
+            <div class="resumen-carga" id="resumenCarga"></div>
+            <div id="avisoOmitidas" class="mensaje"></div>
+            <div id="listaOrdenesPrevia"></div>
+        </div>
+
+        <div class="botonera">
+            <button type="button" class="btn btn-secundario" id="btnCerrarCarga">CANCELAR</button>
+            <button type="button" class="btn btn-azul" id="btnValidar" disabled>VALIDAR ARCHIVO</button>
+            <button type="button" class="btn oculto" id="btnConfirmar" disabled>CONFIRMAR CARGA</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const $ = id => document.getElementById(id);
+    const { esc, fecha, numero, estado } = EBR;
+    let archivoActual = null;
+    let validacion = null;
+    let decisionesUsuario = {};   // índice -> 'reemplazar' | 'omitir'
+
+    // ---------------- listado
+    const parametros = new URLSearchParams(location.search);
+    if (parametros.get('estado')) $('filtroEstado').value = parametros.get('estado');
+
+    function columnas() {
+        const filtro = $('filtroEstado').value;
+        const base = ['Orden', 'Producto', 'Código', 'Cantidad', 'Materiales', 'Estado'];
+        if (filtro === 'ELIMINADA') return ['Orden', 'Producto', 'Código', 'Cantidad', 'Estado', 'Eliminada por', 'Fecha de eliminación', 'Motivo de eliminación'];
+        if (filtro === 'TODAS') return [...base, 'Cargada por', 'Fecha de carga', 'Motivo de eliminación'];
+        return [...base, 'Cargada por', 'Fecha de carga'];
+    }
+
+    function celdasFinales(o, filtro) {
+        if (filtro === 'ELIMINADA') {
+            return `<td>${esc(o.eliminada_por || '')}</td><td>${esc(fecha(o.eliminada_en))}</td><td class="motivo">${esc(o.motivo_eliminacion || '')}</td>`;
+        }
+        const carga = `<td>${esc(o.cargada_por)}</td><td>${esc(fecha(o.cargada_en))}</td>`;
+        return filtro === 'TODAS' ? carga + `<td class="motivo">${esc(o.motivo_eliminacion || '')}</td>` : carga;
+    }
+
+    async function cargarListado() {
+        const filtro = $('filtroEstado').value;
+        const cols = columnas();
+        $('encabezadoOrdenes').innerHTML = cols.map(c => `<th${['Cantidad', 'Materiales'].includes(c) ? ' class="num"' : ''}>${esc(c)}</th>`).join('');
+        const p = new URLSearchParams();
+        if (filtro) p.set('estado', filtro);
+        if ($('filtroBusqueda').value.trim()) p.set('busqueda', $('filtroBusqueda').value.trim());
+        const r = await EBR.api(`/ebr/ordenes?${p}`);
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeListado'), e.mensaje, 'error'); return; }
+        const ordenes = await r.json();
+        $('contador').textContent = ordenes.length ? `${ordenes.length} orden(es)` : '';
+        const cuerpo = $('cuerpoOrdenes');
+        if (!ordenes.length) { cuerpo.innerHTML = `<tr><td colspan="${cols.length}" class="vacio">No hay órdenes para mostrar.</td></tr>`; return; }
+        cuerpo.innerHTML = ordenes.map(o => `
+            <tr class="clic" tabindex="0" data-id="${esc(o.id)}">
+                <td><strong>${esc(o.numero_orden)}</strong>${o.version > 1 ? `<span class="version">v${esc(o.version)}</span>` : ''}</td>
+                <td>${esc(o.descripcion)}</td>
+                <td>${esc(o.pt)}</td>
+                <td class="num">${numero(o.cantidad_pt)}</td>
+                ${filtro === 'ELIMINADA' ? '' : `<td class="num">${esc(o.total_materiales)}</td>`}
+                <td>${estado(o.estado)}</td>
+                ${celdasFinales(o, filtro)}
+            </tr>`).join('');
+        cuerpo.querySelectorAll('tr.clic').forEach(tr => {
+            const abrir = () => { window.location.href = `/ebr/orden-trabajo/${encodeURIComponent(tr.dataset.id)}`; };
+            tr.addEventListener('click', abrir);
+            tr.addEventListener('keydown', e => { if (e.key === 'Enter') abrir(); });
+        });
+    }
+    let espera;
+    $('filtroBusqueda').addEventListener('input', () => { clearTimeout(espera); espera = setTimeout(cargarListado, 300); });
+    $('filtroEstado').addEventListener('change', cargarListado);
+
+    // ---------------- carga de órdenes
+    function reiniciarCarga() {
+        archivoActual = null; validacion = null; decisionesUsuario = {};
+        $('inputArchivo').value = '';
+        $('pasoArchivo').classList.remove('oculto');
+        $('pasoVistaPrevia').classList.add('oculto');
+        $('listaOrdenesPrevia').innerHTML = '';
+        EBR.limpiarMensaje($('mensajeCarga'));
+        EBR.limpiarMensaje($('avisoOmitidas'));
+        $('btnValidar').classList.remove('oculto'); $('btnValidar').disabled = true;
+        $('btnConfirmar').classList.add('oculto'); $('btnConfirmar').disabled = true;
+    }
+    function cerrarCarga() { $('overlayCarga').classList.remove('visible'); reiniciarCarga(); }
+
+    $('btnNuevaCarga').addEventListener('click', () => { reiniciarCarga(); $('overlayCarga').classList.add('visible'); $('inputArchivo').focus(); });
+    $('btnCerrarCarga').addEventListener('click', cerrarCarga);
+    $('inputArchivo').addEventListener('change', e => {
+        archivoActual = e.target.files[0] || null;
+        EBR.limpiarMensaje($('mensajeCarga'));
+        if (archivoActual && archivoActual.size > 10 * 1024 * 1024) {
+            EBR.mensaje($('mensajeCarga'), 'El archivo supera el tamaño máximo de 10 MB.', 'error');
+            archivoActual = null;
+        }
+        $('btnValidar').disabled = !archivoActual;
+    });
+
+    $('btnValidar').addEventListener('click', async () => {
+        if (!archivoActual) return;
+        $('btnValidar').disabled = true;
+        $('btnValidar').textContent = 'VALIDANDO…';
+        const datos = new FormData();
+        datos.append('archivo', archivoActual);
+        try {
+            const r = await EBR.api('/ebr/ordenes/validar', { method: 'POST', body: datos });
+            if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeCarga'), e.mensaje, 'error', e.errores); return; }
+            const v = await r.json();
+            if (!v.valido) {
+                const extra = v.total_errores > v.errores.length ? ` Se muestran ${v.errores.length} de ${v.total_errores}.` : '';
+                EBR.mensaje($('mensajeCarga'), `El archivo tiene ${v.total_errores} error(es) y no se cargó ninguna orden. Corríjalo y vuelva a seleccionarlo.${extra}`, 'error', v.errores);
+                return;
+            }
+            validacion = v;
+            pintarVistaPrevia(v);
+        } finally {
+            $('btnValidar').textContent = 'VALIDAR ARCHIVO';
+            $('btnValidar').disabled = !archivoActual || !!validacion;
+        }
+    });
+
+    function pintarVistaPrevia(v) {
+        const nuevas = v.ordenes.filter(o => o.situacion === 'NUEVA').length;
+        const existen = v.ordenes.filter(o => o.situacion === 'EXISTE').length;
+        const bloqueadas = v.ordenes.filter(o => o.situacion === 'EN_DESARROLLO').length;
+        $('resumenCarga').innerHTML =
+            `<span class="estado estado-NUEVA">${v.ordenes.length} orden(es) en el archivo</span>` +
+            (nuevas ? `<span class="estado estado-NUEVA">${nuevas} nueva(s)</span>` : '') +
+            (existen ? `<span class="estado estado-EXISTE">${existen} ya existe(n)</span>` : '') +
+            (bloqueadas ? `<span class="estado estado-EN_DESARROLLO">${bloqueadas} en desarrollo</span>` : '');
+
+        $('listaOrdenesPrevia').innerHTML = v.ordenes.map((o, i) => {
+            const clase = o.situacion === 'NUEVA' ? 'nueva' : (o.situacion === 'EXISTE' ? 'existe' : 'bloqueada');
+            const insignia = o.situacion === 'NUEVA' ? '<span class="estado estado-NUEVA">Nueva</span>'
+                : o.situacion === 'EXISTE' ? `<span class="estado estado-EXISTE">Ya existe · versión ${esc(o.existente.version)}</span>`
+                : '<span class="estado estado-EN_DESARROLLO">En desarrollo</span>';
+            let decision = '';
+            if (o.situacion === 'EXISTE') {
+                decision = `
+                <div class="mensaje alerta">
+                    La orden <strong>${esc(o.numero_orden)}</strong> ya existe (versión ${esc(o.existente.version)}, cargada el ${esc(fecha(o.existente.cargada_en))} por ${esc(o.existente.cargada_por)}). ¿Desea reemplazarla?
+                    <div class="decision-opciones">
+                        <button type="button" class="btn btn-sm" data-accion="reemplazar" data-indice="${i}">SÍ, REEMPLAZAR (VERSIÓN ${esc(o.existente.version + 1)})</button>
+                        <button type="button" class="btn btn-secundario btn-sm" data-accion="omitir" data-indice="${i}">NO REEMPLAZAR</button>
+                    </div>
+                    <div class="campo oculto" id="bloqueMotivo-${i}" style="margin:12px 0 0">
+                        <label for="motivo-${i}">Motivo del reemplazo (obligatorio)</label>
+                        <textarea id="motivo-${i}" maxlength="500" placeholder="Explique por qué se actualiza la orden"></textarea>
+                    </div>
+                </div>`;
+            } else if (o.situacion === 'EN_DESARROLLO') {
+                decision = '<div class="mensaje info">Esta orden ya está en desarrollo: no se puede actualizar y no se modificará.</div>';
+            }
+            const avisos = o.advertencias.length ? `<div class="mensaje alerta">${o.advertencias.map(esc).join('<br>')}</div>` : '';
+            return `
+            <div class="orden-previa ${clase}" id="ordenPrevia-${i}">
+                <div class="orden-previa-cabecera"><h3>Orden ${esc(o.numero_orden)}</h3>${insignia}</div>
+                <div class="ficha">
+                    <div class="dato dato-principal"><span>Producto</span><strong>${esc(o.descripcion)}</strong></div>
+                    <div class="dato dato-principal"><span>Código</span><strong>${esc(o.pt)}</strong></div>
+                    <div class="dato dato-principal"><span>Cantidad</span><strong>${numero(o.cantidad_pt)}</strong></div>
+                    <div class="dato"><span>Materiales</span><strong>${esc(o.total_materiales)}</strong></div>
+                </div>
+                ${avisos}${decision}
+                <details class="materiales">
+                    <summary>Ver materiales (${esc(o.total_materiales)})</summary>
+                    <div class="tabla-contenedor">
+                        <table class="tabla">
+                            <thead><tr><th>Código material</th><th>Descripción material</th><th>UM</th><th class="num">Cantidad</th></tr></thead>
+                            <tbody>${o.materiales.map(m => `<tr><td>${esc(m.material)}</td><td>${esc(m.descripcion_material)}</td><td>${esc(m.um)}</td><td class="num">${numero(m.cantidad)}</td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>`;
+        }).join('');
+
+        $('listaOrdenesPrevia').querySelectorAll('button[data-accion]').forEach(boton => boton.addEventListener('click', () => {
+            const i = Number(boton.dataset.indice);
+            if (boton.dataset.accion === 'omitir') { noReemplazar(i); return; }
+            decisionesUsuario[i] = 'reemplazar';
+            boton.classList.add('elegido');
+            $(`bloqueMotivo-${i}`).classList.remove('oculto');
+            $(`motivo-${i}`).focus();
+            actualizarConfirmar();
+        }));
+        $('listaOrdenesPrevia').querySelectorAll('textarea').forEach(t => t.addEventListener('input', actualizarConfirmar));
+
+        $('pasoArchivo').classList.add('oculto');
+        $('pasoVistaPrevia').classList.remove('oculto');
+        $('btnValidar').classList.add('oculto');
+        $('btnConfirmar').classList.remove('oculto');
+        actualizarConfirmar();
+    }
+
+    /** NO REEMPLAZAR: cierra el apartado de esa orden. Si ya no queda nada por cargar, cierra la ventana. */
+    function noReemplazar(i) {
+        decisionesUsuario[i] = 'omitir';
+        $(`ordenPrevia-${i}`).classList.add('oculto');
+        const omitidas = validacion.ordenes.filter((_, j) => decisionesUsuario[j] === 'omitir').map(o => o.numero_orden);
+
+        const pendientes = validacion.ordenes.some((o, j) => o.situacion === 'NUEVA' || (o.situacion === 'EXISTE' && decisionesUsuario[j] !== 'omitir'));
+        if (!pendientes) {
+            cerrarCarga();
+            EBR.mensaje($('mensajeListado'), `No se realizaron cambios. ${omitidas.length === 1 ? 'La orden' : 'Las órdenes'} ${omitidas.join(', ')} se ${omitidas.length === 1 ? 'mantiene' : 'mantienen'} sin reemplazar.`, 'info');
+            return;
+        }
+        EBR.mensaje($('avisoOmitidas'), `No se reemplazará${omitidas.length === 1 ? ' la orden' : 'n las órdenes'} ${omitidas.join(', ')}.`, 'info');
+        actualizarConfirmar();
+    }
+
+    function decisiones() {
+        const resultado = {}; let completas = true; let aProcesar = 0;
+        validacion.ordenes.forEach((o, i) => {
+            if (o.situacion === 'NUEVA') { aProcesar++; return; }
+            if (o.situacion !== 'EXISTE') return;
+            const elegida = decisionesUsuario[i];
+            if (!elegida) { completas = false; return; }
+            if (elegida === 'reemplazar') {
+                const motivo = $(`motivo-${i}`).value.trim();
+                if (motivo.length < 5) completas = false;
+                resultado[o.numero_orden] = { accion: 'reemplazar', motivo };
+                aProcesar++;
+            } else {
+                resultado[o.numero_orden] = { accion: 'omitir' };
+            }
+        });
+        return { resultado, completas, aProcesar };
+    }
+
+    function actualizarConfirmar() {
+        if (!validacion) return;
+        const d = decisiones();
+        $('btnConfirmar').disabled = !(d.completas && d.aProcesar > 0);
+    }
+
+    $('btnConfirmar').addEventListener('click', async () => {
+        const d = decisiones();
+        if (!d.completas || !d.aProcesar) return;
+        $('btnConfirmar').disabled = true;
+        $('btnConfirmar').textContent = 'CARGANDO…';
+        const datos = new FormData();
+        datos.append('archivo', archivoActual);
+        datos.append('decisiones', JSON.stringify(d.resultado));
+        try {
+            const r = await EBR.api('/ebr/ordenes', { method: 'POST', body: datos });
+            if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeCarga'), e.mensaje, 'error', e.errores); $('btnConfirmar').disabled = false; return; }
+            const resultado = await r.json();
+            cerrarCarga();
+            EBR.mensaje($('mensajeListado'), resultado.mensaje, 'exito');
+            await cargarListado();
+        } finally {
+            $('btnConfirmar').textContent = 'CONFIRMAR CARGA';
+        }
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('overlayCarga').classList.contains('visible')) cerrarCarga(); });
+
+    // ---------------- inicio
+    (async () => {
+        const yo = await EBR.iniciar();
+        if (yo.esAdmin) $('btnNuevaCarga').classList.remove('oculto');
+        await cargarListado();
+    })();
+})();
+</script>
+{% endblock %}

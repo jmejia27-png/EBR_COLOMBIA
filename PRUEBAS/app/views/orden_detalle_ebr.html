@@ -1,0 +1,172 @@
+{% extends "base_ebr.html" %}
+{% set menu_activo = 'ordenes' %}
+{% block titulo %}Orden de trabajo{% endblock %}
+{% block titulo_barra %}<a href="/ebr/repositorio-ordenes" style="text-decoration:none">Órdenes de trabajo</a> / <span id="migaOrden"></span>{% endblock %}
+
+{% block contenido %}
+<div id="mensajeDetalle" class="mensaje"></div>
+
+<div id="detalle" class="oculto">
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Orden <span id="detNumero"></span> <span id="detVersion" class="version"></span></h1>
+            <p>Información general de la orden de trabajo</p>
+        </div>
+        <div class="filtros">
+            <button type="button" class="btn btn-peligro-linea oculto" id="btnEliminar">ELIMINAR ORDEN</button>
+            <button type="button" class="btn oculto" id="btnDesarrollar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                <span id="textoDesarrollar">DESARROLLAR ORDEN</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="avisoEstado" class="mensaje"></div>
+
+    <section class="card">
+        <div class="ficha">
+            <div class="dato dato-principal"><span>Producto</span><strong id="detProducto"></strong></div>
+            <div class="dato dato-principal"><span>Código</span><strong id="detCodigo"></strong></div>
+            <div class="dato dato-principal"><span>Cantidad</span><strong id="detCantidad"></strong></div>
+            <div class="dato"><span>Materiales</span><strong id="detMateriales"></strong></div>
+            <div class="dato"><span>Estado</span><strong id="detEstado"></strong></div>
+            <div class="dato"><span>Cargada por</span><strong id="detCargadaPor"></strong></div>
+            <div class="dato"><span>Fecha de carga</span><strong id="detFecha"></strong></div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2 class="card-titulo">Materiales de la orden</h2>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead><tr><th>Código material</th><th>Descripción material</th><th>UM</th><th class="num">Cantidad</th></tr></thead>
+                <tbody id="detLineas"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- ================= MODAL: DESARROLLAR ================= -->
+<div class="overlay" id="overlayDesarrollar" role="dialog" aria-modal="true" aria-labelledby="tituloDesarrollar">
+    <div class="modal">
+        <h2 id="tituloDesarrollar">Desarrollar orden</h2>
+        <p class="subtitulo">Al desarrollar la orden <strong id="desNumero"></strong> ya no se podrá actualizar con una nueva versión ni eliminar. ¿Desea continuar?</p>
+        <div id="mensajeDesarrollar" class="mensaje"></div>
+        <div class="botonera">
+            <button type="button" class="btn btn-secundario" data-cerrar="overlayDesarrollar">CANCELAR</button>
+            <button type="button" class="btn" id="btnConfirmarDesarrollo">SÍ, DESARROLLAR</button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL: ELIMINAR ================= -->
+<div class="overlay" id="overlayEliminar" role="dialog" aria-modal="true" aria-labelledby="tituloEliminar">
+    <div class="modal">
+        <h2 id="tituloEliminar">Eliminar orden</h2>
+        <p class="subtitulo">La orden <strong id="elimNumero"></strong> quedará como eliminada y se conservará en el registro de auditoría.</p>
+        <div class="campo">
+            <label for="motivoEliminar">Motivo de la eliminación (obligatorio)</label>
+            <textarea id="motivoEliminar" maxlength="500" placeholder="Explique por qué se elimina la orden"></textarea>
+            <p class="ayuda">Mínimo 5 caracteres.</p>
+        </div>
+        <div id="mensajeEliminar" class="mensaje"></div>
+        <div class="botonera">
+            <button type="button" class="btn btn-secundario" data-cerrar="overlayEliminar">CANCELAR</button>
+            <button type="button" class="btn btn-peligro" id="btnConfirmarEliminar" disabled>ELIMINAR ORDEN</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const ORDEN_ID = {{ orden_id | tojson }};
+    const $ = id => document.getElementById(id);
+    const { esc, fecha, numero, estado } = EBR;
+    let orden = null;
+    let yo = null;
+
+    function cerrar(id) { $(id).classList.remove('visible'); }
+    document.querySelectorAll('[data-cerrar]').forEach(b => b.addEventListener('click', () => cerrar(b.dataset.cerrar)));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { cerrar('overlayDesarrollar'); cerrar('overlayEliminar'); } });
+
+    function pintar(o) {
+        orden = o;
+        document.title = `Orden ${o.numero_orden} · Yobel EBR`;
+        $('migaOrden').textContent = `Orden ${o.numero_orden}`;
+        $('detNumero').textContent = o.numero_orden;
+        $('detVersion').textContent = `Versión ${o.version}`;
+        $('detProducto').textContent = o.descripcion;
+        $('detCodigo').textContent = o.pt;
+        $('detCantidad').textContent = numero(o.cantidad_pt);
+        $('detMateriales').textContent = o.total_materiales;
+        $('detEstado').innerHTML = estado(o.estado);
+        $('detCargadaPor').textContent = o.cargada_por;
+        $('detFecha').textContent = fecha(o.cargada_en);
+        $('detLineas').innerHTML = o.materiales.map(m =>
+            `<tr><td>${esc(m.material)}</td><td>${esc(m.descripcion_material)}</td><td>${esc(m.um)}</td><td class="num">${numero(m.cantidad)}</td></tr>`).join('')
+            || '<tr><td colspan="4" class="vacio">La orden no tiene materiales.</td></tr>';
+
+        const aviso = $('avisoEstado');
+        if (o.estado === 'ELIMINADA') {
+            EBR.mensaje(aviso, `Orden eliminada por ${o.eliminada_por || ''} el ${fecha(o.eliminada_en)} · Motivo: ${o.motivo_eliminacion || ''}`, 'error');
+        } else if (o.estado === 'EN_DESARROLLO') {
+            EBR.mensaje(aviso, `Orden en desarrollo desde el ${fecha(o.desarrollo_en)} por ${o.desarrollo_por || ''} · Ya no se puede actualizar ni eliminar.`, 'exito');
+        } else if (o.version > 1) {
+            EBR.mensaje(aviso, `Versión ${o.version} · Motivo de la última actualización: ${o.motivo_actualizacion || ''}`, 'info');
+        } else {
+            EBR.limpiarMensaje(aviso);
+        }
+
+        $('btnDesarrollar').classList.toggle('oculto', o.estado === 'ELIMINADA');
+        $('textoDesarrollar').textContent = o.estado === 'EN_DESARROLLO' ? 'CONTINUAR DESARROLLO' : 'DESARROLLAR ORDEN';
+        $('btnEliminar').classList.toggle('oculto', !(yo.esAdmin && o.estado === 'CARGADA'));
+        $('detalle').classList.remove('oculto');
+    }
+
+    async function cargar() {
+        const r = await EBR.api(`/ebr/ordenes/${encodeURIComponent(ORDEN_ID)}`);
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeDetalle'), e.mensaje, 'error'); return; }
+        pintar(await r.json());
+    }
+
+    // ---------------- desarrollar
+    $('btnDesarrollar').addEventListener('click', () => {
+        if (orden.estado === 'EN_DESARROLLO') { window.location.href = `/ebr/orden-trabajo/${encodeURIComponent(orden.id)}/desarrollo`; return; }
+        $('desNumero').textContent = orden.numero_orden;
+        EBR.limpiarMensaje($('mensajeDesarrollar'));
+        $('overlayDesarrollar').classList.add('visible');
+    });
+    $('btnConfirmarDesarrollo').addEventListener('click', async () => {
+        $('btnConfirmarDesarrollo').disabled = true;
+        try {
+            const r = await EBR.api(`/ebr/ordenes/${encodeURIComponent(orden.id)}/desarrollar`, { method: 'POST' });
+            if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeDesarrollar'), e.mensaje, 'error'); return; }
+            const d = await r.json();
+            window.location.href = d.redireccion;
+        } finally { $('btnConfirmarDesarrollo').disabled = false; }
+    });
+
+    // ---------------- eliminar
+    $('btnEliminar').addEventListener('click', () => {
+        $('elimNumero').textContent = orden.numero_orden;
+        $('motivoEliminar').value = '';
+        $('btnConfirmarEliminar').disabled = true;
+        EBR.limpiarMensaje($('mensajeEliminar'));
+        $('overlayEliminar').classList.add('visible');
+        $('motivoEliminar').focus();
+    });
+    $('motivoEliminar').addEventListener('input', () => { $('btnConfirmarEliminar').disabled = $('motivoEliminar').value.trim().length < 5; });
+    $('btnConfirmarEliminar').addEventListener('click', async () => {
+        $('btnConfirmarEliminar').disabled = true;
+        const r = await EBR.api(`/ebr/ordenes/${encodeURIComponent(orden.id)}/eliminar`, { method: 'POST', json: { motivo: $('motivoEliminar').value } });
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeEliminar'), e.mensaje, 'error'); $('btnConfirmarEliminar').disabled = false; return; }
+        cerrar('overlayEliminar');
+        pintar(await r.json());
+    });
+
+    (async () => { yo = await EBR.iniciar(); await cargar(); })();
+})();
+</script>
+{% endblock %}

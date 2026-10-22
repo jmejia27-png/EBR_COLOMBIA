@@ -1,0 +1,48 @@
+{% extends "base_ebr.html" %}
+{% set menu_activo = 'ordenes' %}
+{% block titulo %}Desarrollo de la orden{% endblock %}
+{% block titulo_barra %}Desarrollo de la orden <span id="migaOrden"></span>{% endblock %}
+
+{% block contenido %}
+<div class="encabezado-pagina">
+    <div>
+        <h1>Desarrollo de la orden <span id="desNumero"></span></h1>
+        <p>CU-04 · Desarrollo de la orden de trabajo</p>
+    </div>
+    <a class="btn btn-secundario" id="btnVolver" href="/ebr/repositorio-ordenes">VOLVER A LA ORDEN</a>
+</div>
+
+<div class="mensaje info" style="display:block">
+    El caso de uso CU-04 aún no está desarrollado. La orden ya quedó en estado <strong>En desarrollo</strong>:
+    desde este momento no se puede actualizar con una nueva versión ni eliminar.
+</div>
+
+<section class="card">
+    <div class="ficha" id="ficha">
+        <div class="dato dato-principal"><span>Producto</span><strong id="desProducto">–</strong></div>
+        <div class="dato dato-principal"><span>Código</span><strong id="desCodigo">–</strong></div>
+        <div class="dato dato-principal"><span>Cantidad</span><strong id="desCantidad">–</strong></div>
+        <div class="dato"><span>Estado</span><strong id="desEstado">–</strong></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function () {
+    const ORDEN_ID = {{ orden_id | tojson }};
+    const $ = id => document.getElementById(id);
+    await EBR.iniciar();
+    $('btnVolver').href = `/ebr/orden-trabajo/${encodeURIComponent(ORDEN_ID)}`;
+    const r = await EBR.api(`/ebr/ordenes/${encodeURIComponent(ORDEN_ID)}`);
+    if (!r.ok) return;
+    const o = await r.json();
+    $('desNumero').textContent = o.numero_orden;
+    $('migaOrden').textContent = `· ${o.numero_orden}`;
+    $('desProducto').textContent = o.descripcion;
+    $('desCodigo').textContent = o.pt;
+    $('desCantidad').textContent = EBR.numero(o.cantidad_pt);
+    $('desEstado').innerHTML = EBR.estado(o.estado);
+})();
+</script>
+{% endblock %}

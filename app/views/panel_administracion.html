@@ -592,6 +592,9 @@
 
     function obtenerToken() { return sessionStorage.getItem('admin_token'); }
 
+    // Escapa texto antes de insertarlo como HTML (evita inyección de HTML con nombres o correos)
+    const esc = (valor) => String(valor ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
     function mostrarMensaje(el, texto, tipo) {
         el.textContent = texto;
         el.className = 'mensaje ' + tipo;
@@ -722,7 +725,7 @@
 
     function poblarDatalistUsuarios(usuarios) {
         const datalist = document.getElementById('listaUsuariosDatalist');
-        datalist.innerHTML = usuarios.map((u) => `<option value="${u.username}">${u.email}</option>`).join('');
+        datalist.innerHTML = usuarios.map((u) => `<option value="${esc(u.username)}">${esc(u.email)}</option>`).join('');
     }
 
     function renderizarTabla(usuarios) {
@@ -738,13 +741,13 @@
             const fecha = new Date(usuario.creado_en).toLocaleDateString('es-CO');
 
             fila.innerHTML = `
-                <td>${usuario.username}</td>
-                <td>${usuario.email}</td>
+                <td>${esc(usuario.username)}</td>
+                <td>${esc(usuario.email)}</td>
                 <td><span class="badge badge-rol">${usuario.rol === 'admin' ? 'Administrador' : 'Usuario'}</span></td>
                 <td><span class="badge ${usuario.activo ? 'badge-activo' : 'badge-inactivo'}">${usuario.activo ? 'Activo' : 'Inactivo'}</span></td>
                 <td>${fecha}</td>
                 <td>
-                    <button class="btn-fila ${usuario.activo ? 'desactivar' : ''}" data-id="${usuario.id}" data-username="${usuario.username}" data-activo="${usuario.activo}">
+                    <button class="btn-fila ${usuario.activo ? 'desactivar' : ''}" data-id="${esc(usuario.id)}" data-username="${esc(usuario.username)}" data-activo="${usuario.activo}">
                         ${usuario.activo ? 'Desactivar' : 'Activar'}
                     </button>
                 </td>
@@ -846,7 +849,7 @@
         if (usuario) {
             fichaUsuarioEncontrado.style.display = 'block';
             fichaUsuarioEncontrado.innerHTML = `
-                <strong>${usuario.username}</strong> — ${usuario.email}<br>
+                <strong>${esc(usuario.username)}</strong> — ${esc(usuario.email)}<br>
                 Rol: ${usuario.rol === 'admin' ? 'Administrador' : 'Usuario'} ·
                 Estado: ${usuario.activo ? 'Activo' : 'Inactivo'}
             `;

@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yobel - Panel de Administración</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --yobel-yellow: #F0DE32;
+            --yobel-blue: #59C1E6;
+            --yobel-blue-dark: #2E8FB8;
+            --yobel-black: #14171A;
+            --yobel-black-soft: #1E2226;
+            --ink: #1A2733;
+            --ink-soft: #6B7A88;
+            --line: #E2E8EF;
+            --danger: #D6412E;
+            --danger-bg: #F4D9D5;
+            --success: #3FA867;
+            --success-bg: #DCEEE1;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #F4F6F8;
+            color: var(--ink);
+        }
+
+        /* ================= LOGIN ================= */
+        #pantallaLogin {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(89, 193, 230, 0.35), transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(240, 222, 50, 0.25), transparent 45%),
+                linear-gradient(160deg, var(--yobel-black) 0%, var(--yobel-black-soft) 55%, #0E1012 100%);
+        }
+
+        .card-login {
+            background-color: #FFFFFF;
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+            width: 100%;
+            max-width: 380px;
+            padding: 36px 30px;
+            border-top: 4px solid var(--yobel-yellow);
+        }
+
+        .card-login h1 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            text-align: center;
+            margin: 0 0 4px;
+            letter-spacing: 0.01em;
+        }
+
+        .card-login .subtitulo {
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--ink-soft);
+            margin: 0 0 26px;
+        }
+
+        .campo { margin-bottom: 16px; }
+
+        .campo label {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--ink-soft);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .campo input, .campo select {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1.5px solid var(--line);
+            border-radius: 9px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            background-color: #FBFCFD;
+        }
+
+        .campo input:focus, .campo select:focus {
+            border-color: var(--yobel-blue);
+            box-shadow: 0 0 0 3px rgba(89, 193, 230, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--yobel-yellow), #E8CC1E);
+            color: var(--yobel-black);
+            font-weight: 700;
+            font-size: 0.88rem;
+            border: none;
+            border-radius: 24px;
+            padding: 12px;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+            transition: transform 0.1s ease, box-shadow 0.15s ease;
+        }
+
+        .btn:hover {
+            box-shadow: 0 6px 16px rgba(240, 222, 50, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-azul {
+            background: linear-gradient(135deg, var(--yobel-blue), var(--yobel-blue-dark));
+            color: #FFFFFF;
+        }
+        .btn-azul:hover { box-shadow: 0 6px 16px rgba(89, 193, 230, 0.4); }
+
+        .btn-secundario {
+            background: #FFFFFF;
+            color: var(--ink);
+            border: 1.5px solid var(--line);
+        }
+        .btn-secundario:hover { background-color: #F4F6F8; box-shadow: none; transform: none; }
+
+        .mensaje {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            border-radius: 8px;
+            padding: 9px 10px;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .mensaje.error { background-color: var(--danger-bg); color: var(--danger); display: block; }
+        .mensaje.exito { background-color: var(--success-bg); color: var(--success); display: block; }
+
+        /* ================= LAYOUT PRINCIPAL ================= */
+        #pantallaPanel {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ---------- Sidebar ---------- */
+        .sidebar {
+            width: 260px;
+            flex-shrink: 0;
+            background: linear-gradient(180deg, var(--yobel-black) 0%, var(--yobel-black-soft) 100%);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 18px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar-marca {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 6px 22px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 22px;
+        }
+
+        .sidebar-marca .punto {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--yobel-yellow), var(--yobel-blue));
+            flex-shrink: 0;
+        }
+
+        .sidebar-marca h1 {
+            color: #FFFFFF;
+            font-size: 0.92rem;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: 0.02em;
+        }
+
+        .sidebar-marca span {
+            display: block;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.68rem;
+            margin-top: 2px;
+        }
+
+        .sidebar-seccion-label {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            margin: 0 0 10px 6px;
+        }
+
+        .sidebar input#inputBusqueda {
+            width: 100%;
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: 1.5px solid rgba(255,255,255,0.12);
+            background-color: rgba(255,255,255,0.06);
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.86rem;
+            outline: none;
+            margin-bottom: 22px;
+        }
+        .sidebar input#inputBusqueda::placeholder { color: rgba(255,255,255,0.4); }
+        .sidebar input#inputBusqueda:focus { border-color: var(--yobel-blue); }
+
+        .sidebar-acciones {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar-acciones .btn {
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.84rem;
+            padding: 11px 14px;
+        }
+
+        .sidebar-spacer { flex: 1; }
+
+        .sidebar-footer {
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 16px;
+        }
+
+        .sidebar-footer .btn {
+            background: transparent;
+            color: rgba(255,255,255,0.75);
+            border: 1.5px solid rgba(255,255,255,0.18);
+        }
+        .sidebar-footer .btn:hover {
+            background: rgba(255,255,255,0.06);
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* ---------- Área principal ---------- */
+        .area-principal {
+            flex: 1;
+            padding: 32px 38px;
+            max-width: 1200px;
+        }
+
+        .encabezado-principal {
+            margin-bottom: 22px;
+        }
+
+        .encabezado-principal h2 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin: 0 0 4px;
+        }
+
+        .encabezado-principal p {
+            font-size: 0.85rem;
+            color: var(--ink-soft);
+            margin: 0;
+        }
+
+        #mensajePanel { max-width: 480px; }
+
+        /* ---------- Tabla contenida ---------- */
+        .panel-tabla {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            box-shadow: 0 2px 10px rgba(20, 23, 26, 0.04);
+            overflow: hidden;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        thead th {
+            text-align: left;
+            font-size: 0.72rem;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, var(--yobel-black), var(--yobel-black-soft));
+        }
+
+        tbody tr { border-bottom: 1px solid var(--line); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background-color: #FAFBFC; }
+
+        tbody td {
+            padding: 13px 16px;
+            font-size: 0.87rem;
+            border-right: 1px solid var(--line);
+        }
+        tbody td:last-child { border-right: none; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .badge-activo { background-color: var(--success-bg); color: var(--success); }
+        .badge-inactivo { background-color: var(--danger-bg); color: var(--danger); }
+        .badge-rol {
+            background: rgba(89, 193, 230, 0.14);
+            color: var(--yobel-blue-dark);
+        }
+
+        .btn-fila {
+            padding: 6px 14px;
+            border-radius: 16px;
+            border: 1.5px solid var(--yobel-blue);
+            background-color: #FFFFFF;
+            color: var(--yobel-blue-dark);
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-fila.desactivar { border-color: var(--danger); color: var(--danger); }
+        .btn-fila:hover { opacity: 0.75; }
+
+        .fila-vacia {
+            text-align: center;
+            color: var(--ink-soft);
+            padding: 40px 20px;
+            font-size: 0.88rem;
+        }
+
+        /* ================= MODALES ================= */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(20, 23, 26, 0.55);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+        }
+        .overlay.visible { display: flex; }
+
+        .modal {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            padding: 28px;
+            width: 100%;
+            max-width: 420px;
+            border-top: 4px solid var(--yobel-blue);
+        }
+
+        .modal h2 {
+            font-size: 1rem;
+            font-weight: 800;
+            margin: 0 0 18px;
+        }
+
+        .modal-acciones { display: flex; gap: 10px; margin-top: 6px; }
+
+        .ficha-usuario {
+            display: none;
+            background: rgba(89, 193, 230, 0.1);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 860px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; }
+            .sidebar-spacer { display: none; }
+            .area-principal { padding: 22px 18px; }
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- ============ PANTALLA 1: LOGIN ============ -->
+<div id="pantallaLogin">
+    <div class="card-login">
+        <h1>PANEL DE ADMINISTRACIÓN</h1>
+        <p class="subtitulo">YOBEL · GENERADOR DE TOKENS EBR</p>
+
+        <form id="formLogin">
+            <div class="campo">
+                <label for="loginUsername">Usuario</label>
+                <input type="text" id="loginUsername" required>
+            </div>
+            <div class="campo">
+                <label for="loginPassword">Contraseña</label>
+                <input type="password" id="loginPassword" required>
+            </div>
+            <div id="mensajeLogin" class="mensaje"></div>
+            <button type="submit" class="btn">INGRESAR</button>
+        </form>
+    </div>
+</div>
+
+
+<!-- ============ PANTALLA 2: PANEL ============ -->
+<div id="pantallaPanel">
+    <div class="layout">
+
+        <!-- ---------- SIDEBAR ---------- -->
+        <aside class="sidebar">
+            <div class="sidebar-marca">
+                <span class="punto"></span>
+                <div>
+                    <h1>YOBEL</h1>
+                    <span>Panel de Administración de usuarios</span>
+                </div>
+            </div>
+
+            <p class="sidebar-seccion-label">Buscar</p>
+            <input type="text" id="inputBusqueda" placeholder="Usuario o correo...">
+
+            <p class="sidebar-seccion-label">Acciones</p>
+            <div class="sidebar-acciones">
+                <button id="btnNuevoUsuario" class="btn">+ Nuevo usuario</button>
+                <button id="btnRestablecerPassword" class="btn btn-azul">Restablecer contraseña</button>
+            </div>
+
+            <div class="sidebar-spacer"></div>
+
+            <div class="sidebar-footer">
+                <button id="btnLogout" class="btn">Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <!-- ---------- ÁREA PRINCIPAL ---------- -->
+        <main class="area-principal">
+            <div class="encabezado-principal">
+                <h2>Gestión de Usuarios</h2>
+                <p>Consulta, crea y administra los accesos al generador de tokens y login EBR.</p>
+            </div>
+
+            <div id="mensajePanel" class="mensaje"></div>
+
+            <div class="panel-tabla">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Correo</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Fecha de Creación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoTablaUsuarios"></tbody>
+                </table>
+            </div>
+        </main>
+
+    </div>
+</div>
+
+
+<!-- ============ MODAL: CREAR USUARIO ============ -->
+<div id="overlayCrear" class="overlay">
+    <div class="modal">
+        <h2>NUEVO USUARIO</h2>
+        <form id="formCrearUsuario">
+            <div class="campo">
+                <label for="crearUsername">Usuario</label>
+                <input type="text" id="crearUsername" minlength="3" maxlength="50" required>
+            </div>
+            <div class="campo">
+                <label for="crearEmail">Correo</label>
+                <input type="email" id="crearEmail" required>
+            </div>
+            <div class="campo">
+                <label for="crearNombre">Nombre completo</label>
+                <input type="text" id="crearNombre" minlength="3" required>
+            </div>
+            <div class="campo">
+                <label for="crearPassword">Contraseña</label>
+                <input type="password" id="crearPassword" minlength="4" required>
+            </div>
+            <div class="campo">
+                <label for="crearRol">Rol</label>
+                <select id="crearRol">
+                    <option value="user">Usuario</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </div>
+            <div id="mensajeCrear" class="mensaje"></div>
+            <div class="modal-acciones">
+                <button type="button" id="btnCancelarCrear" class="btn btn-secundario">Cancelar</button>
+                <button type="submit" class="btn">Crear</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ============ MODAL: RESTABLECER CONTRASEÑA ============ -->
+<div id="overlayRestablecer" class="overlay">
+    <div class="modal">
+        <h2>RESTABLECER CONTRASEÑA</h2>
+        <form id="formRestablecer">
+            <div class="campo">
+                <label for="restablecerUsuario">Buscar usuario</label>
+                <input type="text" id="restablecerUsuario" list="listaUsuariosDatalist" autocomplete="off" placeholder="Escribe el username..." required>
+                <datalist id="listaUsuariosDatalist"></datalist>
+            </div>
+            <div id="fichaUsuarioEncontrado" class="ficha-usuario"></div>
+            <div class="campo">
+                <label for="restablecerPasswordTemporal">Contraseña temporal</label>
+                <input type="password" id="restablecerPasswordTemporal" minlength="4" required>
+            </div>
+            <div id="mensajeRestablecer" class="mensaje"></div>
+            <div class="modal-acciones">
+                <button type="button" id="btnCancelarRestablecer" class="btn btn-secundario">Cancelar</button>
+                <button type="submit" class="btn btn-azul">Restablecer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ============ MODAL: CAMBIO OBLIGATORIO DE CONTRASEÑA ============ -->
+<div id="overlayCambioPassword" class="overlay">
+    <div class="modal">
+        <h2>CAMBIO OBLIGATORIO DE CONTRASEÑA</h2>
+        <p style="font-size:0.82rem; color:var(--ink-soft); margin-bottom:18px;">
+            Debes cambiar tu contraseña temporal antes de continuar.
+        </p>
+        <form id="formCambioPassword">
+            <div class="campo">
+                <label for="passwordActual">Contraseña actual</label>
+                <input type="password" id="passwordActual" required>
+            </div>
+            <div class="campo">
+                <label for="passwordNueva">Nueva contraseña</label>
+                <input type="password" id="passwordNueva" minlength="4" required>
+            </div>
+            <div id="mensajeCambioPassword" class="mensaje"></div>
+            <div class="modal-acciones">
+                <button type="submit" class="btn">CAMBIAR CONTRASEÑA</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<script>
+
+    const BASE_URL = '';
+    let listaUsuariosCache = [];
+    let usernameCambioPassword = '';
+
+    const pantallaLogin = document.getElementById('pantallaLogin');
+    const pantallaPanel = document.getElementById('pantallaPanel');
+    const formLogin = document.getElementById('formLogin');
+    const mensajeLogin = document.getElementById('mensajeLogin');
+    const mensajePanel = document.getElementById('mensajePanel');
+    const cuerpoTabla = document.getElementById('cuerpoTablaUsuarios');
+    const inputBusqueda = document.getElementById('inputBusqueda');
+
+    const overlayCrear = document.getElementById('overlayCrear');
+    const formCrearUsuario = document.getElementById('formCrearUsuario');
+    const mensajeCrear = document.getElementById('mensajeCrear');
+
+    const overlayCambioPassword = document.getElementById('overlayCambioPassword');
+    const formCambioPassword = document.getElementById('formCambioPassword');
+    const mensajeCambioPassword = document.getElementById('mensajeCambioPassword');
+
+    const overlayRestablecer = document.getElementById('overlayRestablecer');
+    const formRestablecer = document.getElementById('formRestablecer');
+    const mensajeRestablecer = document.getElementById('mensajeRestablecer');
+    const inputRestablecerUsuario = document.getElementById('restablecerUsuario');
+    const fichaUsuarioEncontrado = document.getElementById('fichaUsuarioEncontrado');
+
+    function obtenerToken() { return sessionStorage.getItem('admin_token'); }
+
+    // Escapa texto antes de insertarlo como HTML (evita inyección de HTML con nombres o correos)
+    const esc = (valor) => String(valor ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function mostrarMensaje(el, texto, tipo) {
+        el.textContent = texto;
+        el.className = 'mensaje ' + tipo;
+    }
+
+    function ocultarMensaje(el) {
+        el.className = 'mensaje';
+        el.textContent = '';
+    }
+
+    function mostrarPanel() {
+        pantallaLogin.style.display = 'none';
+        overlayCambioPassword.classList.remove('visible');
+        pantallaPanel.style.display = 'block';
+        cargarUsuarios();
+    }
+
+    function mostrarLogin(mensajeError) {
+        sessionStorage.removeItem('admin_token');
+        pantallaPanel.style.display = 'none';
+        overlayCambioPassword.classList.remove('visible');
+        pantallaLogin.style.display = 'flex';
+        if (mensajeError) mostrarMensaje(mensajeLogin, mensajeError, 'error');
+    }
+
+    // ---------- Login ----------
+    formLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeLogin);
+
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            const respuesta = await fetch(`${BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajeLogin, data.detail || 'Credenciales inválidas o sin permisos de administrador', 'error');
+                return;
+            }
+
+            if (data.requiere_cambio_password) {
+                usernameCambioPassword = username;
+                formCambioPassword.reset();
+                ocultarMensaje(mensajeCambioPassword);
+                overlayCambioPassword.classList.add('visible');
+                return;
+            }
+
+            sessionStorage.setItem('admin_token', data.access_token);
+            formLogin.reset();
+            mostrarPanel();
+        } catch (err) {
+            mostrarMensaje(mensajeLogin, 'Error de comunicación con el servidor.', 'error');
+        }
+    });
+
+    // ---------- Cambio obligatorio de contraseña ----------
+    formCambioPassword.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeCambioPassword);
+
+        const passwordActual = document.getElementById('passwordActual').value;
+        const passwordNueva = document.getElementById('passwordNueva').value;
+
+        try {
+            const respuesta = await fetch(`${BASE_URL}/auth/cambiar-password-obligatorio`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: usernameCambioPassword, password_actual: passwordActual, password_nueva: passwordNueva })
+            });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajeCambioPassword, data.detail || 'No se pudo cambiar la contraseña.', 'error');
+                return;
+            }
+
+            if (!data.access_token) {
+                mostrarMensaje(mensajeCambioPassword, 'La contraseña fue cambiada, pero el servidor no devolvió el token de acceso.', 'error');
+                return;
+            }
+
+            sessionStorage.setItem('admin_token', data.access_token);
+            formCambioPassword.reset();
+            mostrarPanel();
+        } catch (err) {
+            mostrarMensaje(mensajeCambioPassword, 'Error de comunicación con el servidor.', 'error');
+        }
+    });
+
+    // ---------- Logout ----------
+    document.getElementById('btnLogout').addEventListener('click', () => mostrarLogin());
+
+    // ---------- Fetch autenticado ----------
+    async function fetchAdmin(ruta, opciones = {}) {
+        const token = obtenerToken();
+        const respuesta = await fetch(`${BASE_URL}${ruta}`, {
+            ...opciones,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...(opciones.headers || {})
+            }
+        });
+        if (respuesta.status === 401) {
+            mostrarLogin('Tu sesión expiró. Inicia sesión nuevamente.');
+            throw new Error('Sesión expirada');
+        }
+        return respuesta;
+    }
+
+    // ---------- Cargar usuarios ----------
+    async function cargarUsuarios() {
+        try {
+            const respuesta = await fetchAdmin('/admin/usuarios/');
+            const usuarios = await respuesta.json();
+            listaUsuariosCache = usuarios;
+            renderizarTabla(usuarios);
+            poblarDatalistUsuarios(usuarios);
+        } catch (err) {}
+    }
+
+    function poblarDatalistUsuarios(usuarios) {
+        const datalist = document.getElementById('listaUsuariosDatalist');
+        datalist.innerHTML = usuarios.map((u) => `<option value="${esc(u.username)}">${esc(u.email)}</option>`).join('');
+    }
+
+    function renderizarTabla(usuarios) {
+        cuerpoTabla.innerHTML = '';
+
+        if (usuarios.length === 0) {
+            cuerpoTabla.innerHTML = '<tr><td colspan="6" class="fila-vacia">No hay usuarios que coincidan con la búsqueda.</td></tr>';
+            return;
+        }
+
+        usuarios.forEach((usuario) => {
+            const fila = document.createElement('tr');
+            const fecha = new Date(usuario.creado_en).toLocaleDateString('es-CO');
+
+            fila.innerHTML = `
+                <td>${esc(usuario.username)}</td>
+                <td>${esc(usuario.email)}</td>
+                <td><span class="badge badge-rol">${usuario.rol === 'admin' ? 'Administrador' : 'Usuario'}</span></td>
+                <td><span class="badge ${usuario.activo ? 'badge-activo' : 'badge-inactivo'}">${usuario.activo ? 'Activo' : 'Inactivo'}</span></td>
+                <td>${fecha}</td>
+                <td>
+                    <button class="btn-fila ${usuario.activo ? 'desactivar' : ''}" data-id="${esc(usuario.id)}" data-username="${esc(usuario.username)}" data-activo="${usuario.activo}">
+                        ${usuario.activo ? 'Desactivar' : 'Activar'}
+                    </button>
+                </td>
+            `;
+            cuerpoTabla.appendChild(fila);
+        });
+
+        document.querySelectorAll('.btn-fila').forEach((boton) => {
+            boton.addEventListener('click', () => cambiarEstadoUsuario(boton));
+        });
+    }
+
+    // ---------- Activar / Desactivar ----------
+    async function cambiarEstadoUsuario(boton) {
+        const id = boton.dataset.id;
+        const username = boton.dataset.username;
+        const activoActual = boton.dataset.activo === 'true';
+        const nuevoEstado = !activoActual;
+
+        if (!confirm(nuevoEstado ? `¿Activar a "${username}"?` : `¿Desactivar a "${username}"? No podrá generar tokens hasta que se le reactive.`)) return;
+
+        try {
+            const respuesta = await fetchAdmin(`/admin/usuarios/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ username, activo: nuevoEstado })
+            });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajePanel, data.detail || 'No se pudo actualizar el usuario.', 'error');
+                setTimeout(() => ocultarMensaje(mensajePanel), 3000);
+                return;
+            }
+
+            mostrarMensaje(mensajePanel, `Usuario "${username}" actualizado correctamente.`, 'exito');
+            setTimeout(() => ocultarMensaje(mensajePanel), 3000);
+            cargarUsuarios();
+        } catch (err) {}
+    }
+
+    // ---------- Búsqueda en vivo ----------
+    inputBusqueda.addEventListener('input', () => {
+        const termino = inputBusqueda.value.trim().toLowerCase();
+        const filtrados = listaUsuariosCache.filter((u) => u.username.toLowerCase().includes(termino) || u.email.toLowerCase().includes(termino));
+        renderizarTabla(filtrados);
+    });
+
+    // ---------- Modal crear usuario ----------
+    document.getElementById('btnNuevoUsuario').addEventListener('click', () => overlayCrear.classList.add('visible'));
+    document.getElementById('btnCancelarCrear').addEventListener('click', () => {
+        overlayCrear.classList.remove('visible');
+        formCrearUsuario.reset();
+        ocultarMensaje(mensajeCrear);
+    });
+
+    formCrearUsuario.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeCrear);
+
+        const cuerpo = {
+            username: document.getElementById('crearUsername').value,
+            email: document.getElementById('crearEmail').value,
+            nombre_completo: document.getElementById('crearNombre').value,
+            password: document.getElementById('crearPassword').value,
+            rol: document.getElementById('crearRol').value
+        };
+
+        try {
+            const respuesta = await fetchAdmin('/admin/usuarios/', { method: 'POST', body: JSON.stringify(cuerpo) });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajeCrear, data.detail || 'No se pudo crear el usuario.', 'error');
+                return;
+            }
+
+            overlayCrear.classList.remove('visible');
+            formCrearUsuario.reset();
+            mostrarMensaje(mensajePanel, `Usuario "${data.username}" creado correctamente.`, 'exito');
+            setTimeout(() => ocultarMensaje(mensajePanel), 3000);
+            cargarUsuarios();
+        } catch (err) {}
+    });
+
+    // ---------- Modal restablecer contraseña ----------
+    document.getElementById('btnRestablecerPassword').addEventListener('click', () => {
+        formRestablecer.reset();
+        ocultarMensaje(mensajeRestablecer);
+        fichaUsuarioEncontrado.style.display = 'none';
+        overlayRestablecer.classList.add('visible');
+    });
+
+    document.getElementById('btnCancelarRestablecer').addEventListener('click', () => {
+        overlayRestablecer.classList.remove('visible');
+    });
+
+    inputRestablecerUsuario.addEventListener('input', () => {
+        const usuario = listaUsuariosCache.find((u) => u.username === inputRestablecerUsuario.value);
+        if (usuario) {
+            fichaUsuarioEncontrado.style.display = 'block';
+            fichaUsuarioEncontrado.innerHTML = `
+                <strong>${esc(usuario.username)}</strong> — ${esc(usuario.email)}<br>
+                Rol: ${usuario.rol === 'admin' ? 'Administrador' : 'Usuario'} ·
+                Estado: ${usuario.activo ? 'Activo' : 'Inactivo'}
+            `;
+        } else {
+            fichaUsuarioEncontrado.style.display = 'none';
+        }
+    });
+
+    formRestablecer.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeRestablecer);
+
+        const username = inputRestablecerUsuario.value.trim();
+        const claveTemporal = document.getElementById('restablecerPasswordTemporal').value;
+        const usuario = listaUsuariosCache.find((u) => u.username === username);
+
+        if (!usuario) {
+            mostrarMensaje(mensajeRestablecer, 'No se encontró ningún usuario con ese username exacto.', 'error');
+            return;
+        }
+        if (!usuario.activo) {
+            mostrarMensaje(mensajeRestablecer, 'Este usuario está inactivo. Actívalo antes de restablecer su contraseña.', 'error');
+            return;
+        }
+        if (!confirm(`¿Confirmas restablecer la contraseña de "${username}"? Deberá cambiarla en su próximo ingreso.`)) return;
+
+        try {
+            const respuesta = await fetchAdmin(`/admin/usuarios/${usuario.id}/restablecer-password`, {
+                method: 'PATCH',
+                body: JSON.stringify({ username, password_temporal: claveTemporal })
+            });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajeRestablecer, data.detail || 'No se pudo restablecer la contraseña.', 'error');
+                return;
+            }
+
+            overlayRestablecer.classList.remove('visible');
+            mostrarMensaje(mensajePanel, `Contraseña de "${username}" restablecida. Deberá cambiarla en su próximo ingreso.`, 'exito');
+            setTimeout(() => ocultarMensaje(mensajePanel), 3000);
+            cargarUsuarios();
+        } catch (err) {}
+    });
+
+    // ---------- Inicializar ----------
+    (async function inicializar() {
+        const token = obtenerToken();
+        if (!token) { mostrarLogin(); return; }
+
+        try {
+            const respuesta = await fetch(`${BASE_URL}/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (respuesta.ok) mostrarPanel(); else mostrarLogin();
+        } catch (err) {
+            mostrarLogin();
+        }
+    })();
+
+</script>
+
+</body>
+</html>

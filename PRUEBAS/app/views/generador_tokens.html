@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yobel - Generador de Códigos de Verificación</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --yobel-yellow: #F0DE32;
+            --yobel-blue: #59C1E6;
+            --yobel-blue-dark: #2E8FB8;
+            --yobel-black: #14171A;
+            --yobel-black-soft: #1E2226;
+            --ink: #1A2733;
+            --ink-soft: #6B7A88;
+            --line: #E2E8EF;
+            --danger: #D6412E;
+            --danger-bg: #F4D9D5;
+            --success: #3FA867;
+            --success-bg: #DCEEE1;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(89, 193, 230, 0.35), transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(240, 222, 50, 0.25), transparent 45%),
+                linear-gradient(160deg, var(--yobel-black) 0%, var(--yobel-black-soft) 55%, #0E1012 100%);
+        }
+
+        .card-otp {
+            background-color: #FFFFFF;
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+            width: 100%;
+            max-width: 420px;
+            padding: 36px 32px 32px;
+            border-top: 4px solid var(--yobel-yellow);
+        }
+
+        .logo-wrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 22px;
+        }
+
+        .logo-texto {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-weight: 700;
+            font-size: 1.7rem;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 28px;
+        }
+
+        h1.titulo {
+            text-align: center;
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            color: var(--ink);
+            margin: 0 0 4px;
+        }
+
+        p.subtitulo {
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--ink-soft);
+            margin: 0 0 26px;
+        }
+
+        .campo {
+            position: relative;
+            margin-bottom: 18px;
+        }
+
+        .campo .icono {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--yobel-blue-dark);
+        }
+
+        .campo input {
+            width: 100%;
+            padding: 13px 14px 13px 42px;
+            border: 1.5px solid var(--line);
+            border-radius: 9px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            color: var(--ink);
+            outline: none;
+            background-color: #FBFCFD;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .campo input::placeholder { color: #9FB4C4; }
+
+        .campo input:focus {
+            border-color: var(--yobel-blue);
+            box-shadow: 0 0 0 3px rgba(89, 193, 230, 0.2);
+        }
+
+        .campo.sin-icono input { padding-left: 14px; }
+
+        .btn-ingresar {
+            width: 100%;
+            background: linear-gradient(135deg, var(--yobel-yellow), #E8CC1E);
+            color: var(--yobel-black);
+            font-weight: 700;
+            font-size: 0.92rem;
+            border: none;
+            border-radius: 24px;
+            padding: 13px;
+            margin-top: 6px;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+            transition: transform 0.1s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-ingresar:hover:not(:disabled) {
+            box-shadow: 0 6px 16px rgba(240, 222, 50, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-ingresar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-generar-wrap {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        .timer-circle-container {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .timer-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .timer-bg {
+            fill: none;
+            stroke: var(--line);
+            stroke-width: 6;
+        }
+
+        .timer-progress {
+            fill: none;
+            stroke: var(--yobel-blue);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 339.292;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+        }
+
+        .timer-progress.expirado {
+            stroke: var(--danger);
+        }
+
+        .btn-generar {
+            width: 106px;
+            height: 106px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--yobel-yellow), #E8CC1E);
+            color: var(--yobel-black);
+            font-weight: 800;
+            font-size: 0.75rem;
+            border: none;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.3s ease;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            line-height: 1.2;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-generar:hover:not(:disabled) {
+            box-shadow: 0 6px 18px rgba(240, 222, 50, 0.5);
+            transform: scale(1.03);
+        }
+
+        .btn-generar:disabled {
+            background: #E2E8EF;
+            color: var(--ink-soft);
+            opacity: 0.7;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .btn-azul {
+            width: 100%;
+            border-radius: 24px;
+            height: auto;
+            padding: 13px;
+            background: linear-gradient(135deg, var(--yobel-blue), var(--yobel-blue-dark));
+            color: #FFFFFF;
+            font-size: 0.92rem;
+        }
+        .btn-azul:hover:not(:disabled) { box-shadow: 0 6px 16px rgba(89, 193, 230, 0.4); }
+
+        .mensaje-inline {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            border-radius: 8px;
+            padding: 9px 10px;
+            margin: -6px 0 16px;
+            display: none;
+        }
+        .mensaje-inline.error { background-color: var(--danger-bg); color: var(--danger); display: block; }
+        .mensaje-inline.exito { background-color: var(--success-bg); color: var(--success); display: block; }
+
+        .resultado { margin-top: 26px; display: none; }
+        .resultado.visible { display: block; }
+
+        .resultado hr { border: none; border-top: 1px solid var(--line); margin: 0 0 20px; }
+
+        .resultado-label {
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--ink-soft);
+            margin: 0 0 10px;
+            font-weight: 600;
+        }
+
+        .otp-row { display: flex; align-items: center; gap: 10px; }
+
+        .otp-display {
+            flex: 1;
+            background: rgba(89, 193, 230, 0.1);
+            border: 2px solid var(--yobel-blue);
+            color: var(--yobel-blue-dark);
+            font-family: 'Inter', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 8px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .otp-display.expirado {
+            color: var(--danger);
+            border-color: var(--danger);
+            background-color: var(--danger-bg);
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+
+        .btn-copiar {
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            border: 1.5px solid var(--yobel-blue);
+            background-color: #FFFFFF;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--yobel-blue-dark);
+            transition: background-color 0.15s ease;
+        }
+        .btn-copiar:hover { background-color: rgba(89, 193, 230, 0.1); }
+
+        .timer-wrap { display: flex; justify-content: center; margin-top: 14px; }
+
+        .timer-badge {
+            background: rgba(89, 193, 230, 0.12);
+            color: var(--yobel-blue-dark);
+            font-weight: 700;
+            font-size: 0.78rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+        .timer-badge span { font-weight: 800; }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(20, 23, 26, 0.6);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+        }
+        .overlay.visible { display: flex; }
+
+        .modal {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            padding: 28px;
+            width: 100%;
+            max-width: 400px;
+            border-top: 4px solid var(--yobel-blue);
+        }
+
+        .modal h2 { font-size: 1rem; font-weight: 800; margin: 0 0 8px; }
+        .modal p.descripcion { font-size: 0.82rem; color: var(--ink-soft); margin: 0 0 18px; }
+    </style>
+</head>
+<body>
+
+<div class="card-otp">
+    <div class="logo-wrap">
+        <span class="logo-texto">yobel</span>
+    </div>
+
+    <h1 class="titulo">GENERADOR DE CÓDIGOS DE VERIFICACIÓN</h1>
+    <p class="subtitulo">Autenticación previa al ingreso al EBR</p>
+
+    <form id="formOTP" novalidate>
+        <div class="campo" id="campoUsuario">
+            <span class="icono">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </span>
+            <input type="text" id="username" placeholder="Usuario" autocomplete="username" required>
+        </div>
+
+        <div class="campo" id="campoPassword">
+            <span class="icono">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
+            <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required>
+        </div>
+
+        <div id="mensajeInline" class="mensaje-inline" role="alert"></div>
+
+        <button type="submit" class="btn-ingresar" id="btnIngresar">INGRESAR</button>
+
+        <div class="btn-generar-wrap" id="btnGenerarContainer">
+            <div class="timer-circle-container">
+                <svg class="timer-svg" viewBox="0 0 120 120">
+                    <circle class="timer-bg" cx="60" cy="60" r="54"></circle>
+                    <circle id="timerProgress" class="timer-progress" cx="60" cy="60" r="54"></circle>
+                </svg>
+                <button type="button" class="btn-generar" id="btnGenerar" disabled>GENERAR TOKEN</button>
+            </div>
+        </div>
+    </form>
+
+    <div id="seccionResultado" class="resultado">
+        <hr>
+        <p class="resultado-label">CÓDIGO GENERADO (4 DÍGITOS)</p>
+        <div class="otp-row">
+            <div id="otpCodigo" class="otp-display">0000</div>
+            <button type="button" class="btn-copiar" id="btnCopiar" title="Copiar código" aria-label="Copiar código">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+        </div>
+        <div class="timer-wrap">
+            <span class="timer-badge">Expiración en: <span id="timer">60</span>s</span>
+        </div>
+    </div>
+</div>
+
+<div id="overlayCambioPassword" class="overlay">
+    <div class="modal">
+        <h2>CAMBIO OBLIGATORIO DE CONTRASEÑA</h2>
+        <p class="descripcion">Tu contraseña es temporal. Establece una nueva para continuar y generar tu token.</p>
+
+        <form id="formCambioPassword" novalidate>
+            <div class="campo sin-icono">
+                <input type="password" id="passwordNuevaOTP" placeholder="Nueva contraseña" minlength="4" required>
+            </div>
+
+            <div id="mensajeCambioPasswordOTP" class="mensaje-inline"></div>
+
+            <button type="submit" class="btn-generar btn-azul">CAMBIAR Y GENERAR TOKEN</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let intervaloTimer = null;
+    let temporizadorReset = null;
+
+    const mensajeInline = document.getElementById('mensajeInline');
+    const seccionResultado = document.getElementById('seccionResultado');
+    const btnIngresar = document.getElementById('btnIngresar');
+    const btnGenerarContainer = document.getElementById('btnGenerarContainer');
+    const btnGenerar = document.getElementById('btnGenerar');
+    const btnCopiar = document.getElementById('btnCopiar');
+    const otpCodigo = document.getElementById('otpCodigo');
+    const formOTP = document.getElementById('formOTP');
+    const inputUsername = document.getElementById('username');
+    const inputPassword = document.getElementById('password');
+    const campoUsuario = document.getElementById('campoUsuario');
+    const campoPassword = document.getElementById('campoPassword');
+    const timerProgress = document.getElementById('timerProgress');
+
+    const overlayCambioPassword = document.getElementById('overlayCambioPassword');
+    const formCambioPassword = document.getElementById('formCambioPassword');
+    const mensajeCambioPasswordOTP = document.getElementById('mensajeCambioPasswordOTP');
+    const inputPasswordNuevaOTP = document.getElementById('passwordNuevaOTP');
+
+    let usernamePendiente = '';
+    let passwordActualPendiente = '';
+
+    const circunferencia = 2 * Math.PI * 54;
+
+    function mostrarMensaje(el, texto, tipo) {
+        el.textContent = texto;
+        el.className = 'mensaje-inline ' + tipo;
+    }
+
+    function ocultarMensaje(el) {
+        el.className = 'mensaje-inline';
+        el.textContent = '';
+    }
+
+    function reiniciarPantalla() {
+        if (intervaloTimer) clearInterval(intervaloTimer);
+        if (temporizadorReset) clearTimeout(temporizadorReset);
+
+        formOTP.reset();
+        ocultarMensaje(mensajeInline);
+        seccionResultado.classList.remove('visible');
+        otpCodigo.textContent = '0000';
+        otpCodigo.classList.remove('expirado');
+        
+        campoUsuario.style.display = 'block';
+        campoPassword.style.display = 'block';
+        btnIngresar.style.display = 'block';
+        btnIngresar.disabled = false;
+        btnGenerarContainer.style.display = 'none';
+        btnGenerar.disabled = true;
+        
+        timerProgress.style.strokeDashoffset = '0';
+        timerProgress.classList.remove('expirado');
+
+        inputUsername.focus();
+    }
+
+    function programarResetPantalla() {
+    if (temporizadorReset) clearTimeout(temporizadorReset);
+    temporizadorReset = setTimeout(reiniciarPantalla, 1 * 60 * 1000); 
+    }
+
+    function mostrarOtpGenerado(codigoOtp, expiraSegundos) {
+        mostrarMensaje(mensajeInline, "Acceso correcto", 'exito');
+        
+        campoUsuario.style.display = 'none';
+        campoPassword.style.display = 'none';
+        btnIngresar.style.display = 'none';
+        btnGenerarContainer.style.display = 'flex';
+        
+        otpCodigo.textContent = codigoOtp;
+        otpCodigo.classList.remove('expirado');
+        seccionResultado.classList.add('visible');
+        iniciarTemporizador(expiraSegundos);
+        programarResetPantalla();
+    }
+
+    async function solicitarOtp(username, password) {
+        ocultarMensaje(mensajeInline);
+        btnIngresar.disabled = true;
+
+        try {
+            const respuesta = await fetch('/otp/generar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                if (data.requiere_cambio_password) {
+                    usernamePendiente = username;
+                    passwordActualPendiente = password;
+                    formCambioPassword.reset();
+                    ocultarMensaje(mensajeCambioPasswordOTP);
+                    overlayCambioPassword.classList.add('visible');
+                    btnIngresar.disabled = false;
+                    return;
+                }
+
+                mostrarMensaje(mensajeInline, data.mensaje || "Usuario o contraseña incorrectos", 'error');
+                seccionResultado.classList.remove('visible');
+                programarResetPantalla();
+                btnIngresar.disabled = false;
+                return;
+            }
+
+            mostrarOtpGenerado(data.codigo_otp, data.expira_en_segundos);
+
+        } catch (err) {
+            mostrarMensaje(mensajeInline, "Error de comunicación con el servidor Uvicorn.", 'error');
+            seccionResultado.classList.remove('visible');
+            btnIngresar.disabled = false;
+        }
+    }
+
+    formOTP.addEventListener('submit', (e) => {
+        e.preventDefault();
+        solicitarOtp(inputUsername.value, inputPassword.value);
+    });
+
+    btnGenerar.addEventListener('click', () => {
+        if (!btnGenerar.disabled) {
+            solicitarOtp(inputUsername.value, inputPassword.value);
+        }
+    });
+
+    formCambioPassword.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeCambioPasswordOTP);
+
+        const passwordNueva = inputPasswordNuevaOTP.value;
+
+        try {
+            const respuesta = await fetch('/auth/cambiar-password-obligatorio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: usernamePendiente,
+                    password_actual: passwordActualPendiente,
+                    password_nueva: passwordNueva
+                })
+            });
+
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajeCambioPasswordOTP, data.detail || 'No se pudo cambiar la contraseña.', 'error');
+                return;
+            }
+
+            if (!data.codigo_otp) {
+                mostrarMensaje(mensajeCambioPasswordOTP, 'La contraseña fue cambiada, pero el servidor no devolvió el token.', 'error');
+                return;
+            }
+
+            overlayCambioPassword.classList.remove('visible');
+            formCambioPassword.reset();
+            
+            inputPassword.value = passwordNueva;
+
+            mostrarOtpGenerado(data.codigo_otp, data.expira_en_segundos);
+
+        } catch (err) {
+            mostrarMensaje(mensajeCambioPasswordOTP, 'Error de comunicación con el servidor.', 'error');
+        }
+    });
+
+    btnCopiar.addEventListener('click', async () => {
+        const texto = otpCodigo.textContent;
+        if (!texto || texto === 'EXPIRADO') return;
+        try {
+            await navigator.clipboard.writeText(texto);
+            const original = btnCopiar.innerHTML;
+            btnCopiar.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            setTimeout(() => { btnCopiar.innerHTML = original; }, 1200);
+        } catch (err) {
+        }
+    });
+
+    function iniciarTemporizador(segundosTotal) {
+        if (intervaloTimer) clearInterval(intervaloTimer);
+
+        let tiempoRestante = segundosTotal;
+        const timerSpan = document.getElementById('timer');
+        timerSpan.textContent = tiempoRestante;
+
+        btnGenerar.disabled = true;
+
+        timerProgress.style.strokeDasharray = circunferencia;
+        timerProgress.style.strokeDashoffset = '0';
+        timerProgress.classList.remove('expirado');
+
+        intervaloTimer = setInterval(() => {
+            tiempoRestante--;
+            timerSpan.textContent = tiempoRestante;
+
+            const progreso = (segundosTotal - tiempoRestante) / segundosTotal;
+            const offset = circunferencia * progreso;
+            timerProgress.style.strokeDashoffset = offset;
+
+            if (tiempoRestante <= 0) {
+                clearInterval(intervaloTimer);
+                otpCodigo.textContent = "EXPIRADO";
+                otpCodigo.classList.add('expirado');
+                timerProgress.classList.add('expirado');
+                btnGenerar.disabled = false;
+            }
+        }, 1000);
+    }
+</script>
+</body>
+</html>

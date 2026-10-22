@@ -1,79 +1,55 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yobel EBR - Página Principal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --yobel-yellow: #F0DE32;
-            --yobel-blue: #59C1E6;
-            --yobel-black: #14171A;
-            --yobel-black-soft: #1E2226;
-            --ink: #1A2733;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; font-family: 'Inter', sans-serif; min-height: 100vh; color: #FFFFFF;
-            background: linear-gradient(160deg, var(--yobel-black) 0%, var(--yobel-black-soft) 55%, #0E1012 100%);
-            display: flex; flex-direction: column;
-        }
-        .topbar {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 18px 28px; border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-        .topbar span { font-weight: 800; letter-spacing: 0.02em; }
-        .btn-salir {
-            background: transparent; color: rgba(255,255,255,0.75); border: 1.5px solid rgba(255,255,255,0.2);
-            border-radius: 20px; padding: 8px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
-        }
-        .btn-salir:hover { background: rgba(255,255,255,0.06); }
-        .contenido { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
-        .contenido h1 { font-size: 1.8rem; font-weight: 800; margin: 0 0 8px; }
-        .contenido p { color: rgba(255,255,255,0.6); font-size: 0.9rem; }
-        .punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, var(--yobel-yellow), var(--yobel-blue)); margin-right: 8px; }
-    </style>
-</head>
-<body>
+{% extends "base_ebr.html" %}
+{% set menu_activo = 'inicio' %}
+{% block titulo %}Inicio{% endblock %}
+{% block titulo_barra %}Inicio{% endblock %}
 
-<div class="topbar">
-    <span><span class="punto"></span>YOBEL EBR</span>
-    <button class="btn-salir" id="btnCerrarSesion">Cerrar sesión</button>
-</div>
-
-<div class="contenido">
+{% block contenido %}
+<div class="encabezado-pagina">
     <div>
-        <h1>Bienvenido, página principal EBR</h1>
-        <p id="nombreUsuario"></p>
+        <h1 id="saludo">Bienvenido</h1>
+        <p>Resumen de las órdenes de trabajo cargadas en el EBR.</p>
     </div>
+    <a href="/ebr/repositorio-ordenes" class="btn">VER ÓRDENES DE TRABAJO</a>
 </div>
 
+<div id="mensajeInicio" class="mensaje"></div>
+
+<section class="tarjetas" aria-label="Indicadores de órdenes">
+    <a class="tarjeta tarjeta-principal" href="/ebr/repositorio-ordenes?estado=TODAS">
+        <div class="etiqueta">Órdenes creadas</div>
+        <div class="valor" id="indTotal">–</div>
+        <div class="detalle">Total cargadas en el sistema</div>
+    </a>
+    <a class="tarjeta" href="/ebr/repositorio-ordenes?estado=CARGADA">
+        <div class="etiqueta">Cargadas</div>
+        <div class="valor" id="indCargadas">–</div>
+        <div class="detalle">Listas para desarrollar</div>
+    </a>
+    <a class="tarjeta tarjeta-verde" href="/ebr/repositorio-ordenes?estado=EN_DESARROLLO">
+        <div class="etiqueta">En desarrollo</div>
+        <div class="valor" id="indDesarrollo">–</div>
+        <div class="detalle">Ya no admiten cambios</div>
+    </a>
+    <a class="tarjeta tarjeta-roja" href="/ebr/repositorio-ordenes?estado=ELIMINADA">
+        <div class="etiqueta">Eliminadas</div>
+        <div class="valor" id="indEliminadas">–</div>
+        <div class="detalle">Conservadas con su motivo</div>
+    </a>
+</section>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    (async function inicializar() {
-        const token = sessionStorage.getItem('ebr_token');
-        if (!token) { window.location.href = '/ebr/login'; return; }
-
-        try {
-            const respuesta = await fetch('/ebr/me', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (!respuesta.ok) { sessionStorage.removeItem('ebr_token'); window.location.href = '/ebr/login'; return; }
-
-            const data = await respuesta.json();
-            document.getElementById('nombreUsuario').textContent = `Sesión iniciada como ${data.username}`;
-        } catch (err) {
-            window.location.href = '/ebr/login';
-        }
+    (async function () {
+        const yo = await EBR.iniciar();
+        document.getElementById('saludo').textContent = `Bienvenido, ${yo.nombre_completo || yo.username}`;
+        const r = await EBR.api('/ebr/indicadores/ordenes');
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje(document.getElementById('mensajeInicio'), e.mensaje, 'error'); return; }
+        const i = await r.json();
+        document.getElementById('indTotal').textContent = EBR.numero(i.total);
+        document.getElementById('indCargadas').textContent = EBR.numero(i.cargadas);
+        document.getElementById('indDesarrollo').textContent = EBR.numero(i.en_desarrollo);
+        document.getElementById('indEliminadas').textContent = EBR.numero(i.eliminadas);
     })();
-
-    document.getElementById('btnCerrarSesion').addEventListener('click', async () => {
-        const token = sessionStorage.getItem('ebr_token');
-        try {
-            await fetch('/ebr/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-        } catch (err) {}
-        sessionStorage.removeItem('ebr_token');
-        window.location.href = '/ebr/login';
-    });
 </script>
-
-</body>
-</html>
+{% endblock %}

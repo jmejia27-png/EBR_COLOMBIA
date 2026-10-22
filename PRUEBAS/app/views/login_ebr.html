@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yobel EBR - Iniciar Sesión</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --yobel-yellow: #F0DE32;
+            --yobel-blue: #59C1E6;
+            --yobel-blue-dark: #2E8FB8;
+            --yobel-black: #14171A;
+            --yobel-black-soft: #1E2226;
+            --ink: #1A2733;
+            --ink-soft: #6B7A88;
+            --line: #E2E8EF;
+            --danger: #D6412E;
+            --danger-bg: #F4D9D5;
+            --success: #3FA867;
+            --success-bg: #DCEEE1;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            color: var(--ink);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(89, 193, 230, 0.35), transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(240, 222, 50, 0.25), transparent 45%),
+                linear-gradient(160deg, var(--yobel-black) 0%, var(--yobel-black-soft) 55%, #0E1012 100%);
+        }
+        .card {
+            background-color: #FFFFFF;
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+            width: 100%;
+            max-width: 400px;
+            padding: 36px 32px;
+            border-top: 4px solid var(--yobel-yellow);
+        }
+        .logo-texto {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-weight: 700;
+            font-size: 1.6rem;
+            text-align: center;
+            display: block;
+            margin-bottom: 6px;
+        }
+        h1 { font-size: 1.05rem; font-weight: 800; text-align: center; margin: 0 0 4px; }
+        p.subtitulo { text-align: center; font-size: 0.78rem; color: var(--ink-soft); margin: 0 0 26px; }
+        .campo { margin-bottom: 16px; }
+        .campo label { display: block; font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 6px; font-weight: 600; }
+        .campo input {
+            width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 9px;
+            font-family: 'Inter', sans-serif; font-size: 0.9rem; outline: none; background-color: #FBFCFD;
+        }
+        .campo input:focus { border-color: var(--yobel-blue); box-shadow: 0 0 0 3px rgba(89,193,230,0.2); }
+        .btn {
+            width: 100%; background: linear-gradient(135deg, var(--yobel-yellow), #E8CC1E); color: var(--yobel-black);
+            font-weight: 700; font-size: 0.9rem; border: none; border-radius: 24px; padding: 12px; cursor: pointer;
+        }
+        .btn:hover { box-shadow: 0 6px 16px rgba(240,222,50,0.4); }
+        .btn-azul { background: linear-gradient(135deg, var(--yobel-blue), var(--yobel-blue-dark)); color: #FFFFFF; }
+        .btn-azul:hover { box-shadow: 0 6px 16px rgba(89,193,230,0.4); }
+        .mensaje { font-size: 0.8rem; font-weight: 600; text-align: center; border-radius: 8px; padding: 9px 10px; margin-bottom: 14px; display: none; }
+        .mensaje.error { background-color: var(--danger-bg); color: var(--danger); display: block; }
+        .mensaje.exito { background-color: var(--success-bg); color: var(--success); display: block; }
+        .pantalla { display: none; }
+        .pantalla.activa { display: block; }
+        .codigo-input {
+            width: 100%; text-align: center; font-size: 1.6rem; letter-spacing: 10px; font-weight: 800;
+            padding: 12px; border: 1.5px solid var(--yobel-blue); border-radius: 10px; outline: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <span class="logo-texto">yobel</span>
+    <h1>INGRESO AL EBR</h1>
+    <p class="subtitulo">Electronic Batch Record</p>
+
+    <!-- PANTALLA 1: credenciales -->
+    <div id="pantallaCredenciales" class="pantalla activa">
+        <form id="formCredenciales">
+            <div class="campo">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="campo">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" required>
+            </div>
+            <div id="mensajeCredenciales" class="mensaje"></div>
+            <button type="submit" class="btn">INGRESAR</button>
+        </form>
+    </div>
+
+    <!-- PANTALLA 2: cambio obligatorio -->
+    <div id="pantallaCambio" class="pantalla">
+        <p class="subtitulo" style="margin-bottom:18px;">Debes actualizar tu contraseña antes de continuar.</p>
+        <form id="formCambio">
+            <div class="campo">
+                <label for="passwordActualCambio">Contraseña actual</label>
+                <input type="password" id="passwordActualCambio" required>
+            </div>
+            <div class="campo">
+                <label for="passwordNuevaCambio">Nueva contraseña</label>
+                <input type="password" id="passwordNuevaCambio" minlength="4" required>
+            </div>
+            <div id="mensajeCambio" class="mensaje"></div>
+            <button type="submit" class="btn btn-azul">ACTUALIZAR CONTRASEÑA</button>
+        </form>
+    </div>
+
+    <!-- PANTALLA 3: código de autenticación -->
+    <div id="pantallaCodigo" class="pantalla">
+        <p class="subtitulo" style="margin-bottom:18px;">Ingresa el código de 4 dígitos generado en la aplicación de tokens.</p>
+        <form id="formCodigo">
+            <div class="campo">
+                <input type="text" id="codigo" class="codigo-input" maxlength="4" inputmode="numeric" required>
+            </div>
+            <div id="mensajeCodigo" class="mensaje"></div>
+            <button type="submit" class="btn btn-azul">VALIDAR CÓDIGO</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const pantallaCredenciales = document.getElementById('pantallaCredenciales');
+    const pantallaCambio = document.getElementById('pantallaCambio');
+    const pantallaCodigo = document.getElementById('pantallaCodigo');
+
+    const formCredenciales = document.getElementById('formCredenciales');
+    const formCambio = document.getElementById('formCambio');
+    const formCodigo = document.getElementById('formCodigo');
+
+    const mensajeCredenciales = document.getElementById('mensajeCredenciales');
+    const mensajeCambio = document.getElementById('mensajeCambio');
+    const mensajeCodigo = document.getElementById('mensajeCodigo');
+
+    let usernameActual = '';
+    let passwordActualParaCambio = '';
+
+    function mostrarMensaje(el, texto, tipo) {
+        // Aseguramos que siempre sea una cadena de texto
+        if (typeof texto !== 'string') {
+            texto = 'Código incorrecto.';
+        }
+        el.textContent = texto;
+        el.className = 'mensaje ' + tipo;
+    }
+
+    function ocultarMensaje(el) {
+        el.className = 'mensaje';
+        el.textContent = '';
+    }
+
+    function irAPantalla(pantalla) {
+        [pantallaCredenciales, pantallaCambio, pantallaCodigo].forEach(p => p.classList.remove('activa'));
+        pantalla.classList.add('activa');
+    }
+
+    function extraerMensajeError(data) {
+        if (!data) return 'Código incorrecto.';
+        
+        // Si el detalle es directamente un texto
+        if (typeof data.detail === 'string') {
+            return data.detail;
+        }
+        
+        // Si el detalle es un Array (errores de Pydantic / FastAPI 422)
+        if (Array.isArray(data.detail) && data.detail.length > 0) {
+            const primerError = data.detail[0];
+            if (typeof primerError === 'string') return primerError;
+            if (typeof primerError === 'object' && primerError !== null) {
+                return primerError.msg || primerError.message || 'Código incorrecto.';
+            }
+        }
+        
+        // Si el detalle es un Objeto no nulo
+        if (typeof data.detail === 'object' && data.detail !== null) {
+            return data.detail.msg || data.detail.message || 'Código incorrecto.';
+        }
+        
+        // Si existe la clave genérica 'mensaje'
+        if (typeof data.mensaje === 'string') {
+            return data.mensaje;
+        }
+        
+        return 'Código incorrecto.';
+    }
+
+    formCredenciales.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeCredenciales);
+
+        usernameActual = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const respuesta = await fetch('/ebr/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: usernameActual, password })
+            });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajeCredenciales, extraerMensajeError(data) || 'Credenciales inválidas', 'error');
+                return;
+            }
+
+            if (data.requiere_cambio_password) {
+                passwordActualParaCambio = password;
+                formCambio.reset();
+                ocultarMensaje(mensajeCambio);
+                irAPantalla(pantallaCambio);
+                return;
+            }
+
+            formCodigo.reset();
+            ocultarMensaje(mensajeCodigo);
+            irAPantalla(pantallaCodigo);
+
+        } catch (err) {
+            mostrarMensaje(mensajeCredenciales, 'Error de comunicación con el servidor.', 'error');
+        }
+    });
+
+    formCambio.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeCambio);
+
+        const passwordNueva = document.getElementById('passwordNuevaCambio').value;
+
+        try {
+            const respuesta = await fetch('/ebr/cambiar-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: usernameActual,
+                    password_actual: passwordActualParaCambio,
+                    password_nueva: passwordNueva
+                })
+            });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mostrarMensaje(mensajeCambio, extraerMensajeError(data) || 'No se pudo actualizar la contraseña.', 'error');
+                return;
+            }
+
+            formCodigo.reset();
+            ocultarMensaje(mensajeCodigo);
+            irAPantalla(pantallaCodigo);
+
+        } catch (err) {
+            mostrarMensaje(mensajeCambio, 'Error de comunicación con el servidor.', 'error');
+        }
+    });
+
+    formCodigo.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ocultarMensaje(mensajeCodigo);
+
+        const codigo = document.getElementById('codigo').value;
+
+        // Validación preventiva en cliente para asegurar los 4 dígitos
+        if (codigo.length < 4) {
+            mostrarMensaje(mensajeCodigo, 'Código incorrecto.', 'error');
+            return;
+        }
+
+        try {
+            const respuesta = await fetch('/ebr/validar-codigo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: usernameActual, codigo })
+            });
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                const mensajeError = extraerMensajeError(data);
+                mostrarMensaje(mensajeCodigo, mensajeError, 'error');
+                return;
+            }
+
+            sessionStorage.setItem('ebr_token', data.access_token);
+            window.location.href = '/ebr/principal';
+
+        } catch (err) {
+            mostrarMensaje(mensajeCodigo, 'Error de comunicación con el servidor.', 'error');
+        }
+    });
+</script>
+
+</body>
+</html>

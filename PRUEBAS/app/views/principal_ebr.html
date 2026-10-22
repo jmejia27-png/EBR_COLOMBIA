@@ -1,0 +1,55 @@
+{% extends "base_ebr.html" %}
+{% set menu_activo = 'inicio' %}
+{% block titulo %}Inicio{% endblock %}
+{% block titulo_barra %}Inicio{% endblock %}
+
+{% block contenido %}
+<div class="encabezado-pagina">
+    <div>
+        <h1 id="saludo">Bienvenido</h1>
+        <p>Resumen de las órdenes de trabajo cargadas en el EBR.</p>
+    </div>
+    <a href="/ebr/repositorio-ordenes" class="btn">VER ÓRDENES DE TRABAJO</a>
+</div>
+
+<div id="mensajeInicio" class="mensaje"></div>
+
+<section class="tarjetas" aria-label="Indicadores de órdenes">
+    <a class="tarjeta tarjeta-principal" href="/ebr/repositorio-ordenes?estado=TODAS">
+        <div class="etiqueta">Órdenes creadas</div>
+        <div class="valor" id="indTotal">–</div>
+        <div class="detalle">Total cargadas en el sistema</div>
+    </a>
+    <a class="tarjeta" href="/ebr/repositorio-ordenes?estado=CARGADA">
+        <div class="etiqueta">Cargadas</div>
+        <div class="valor" id="indCargadas">–</div>
+        <div class="detalle">Listas para desarrollar</div>
+    </a>
+    <a class="tarjeta tarjeta-verde" href="/ebr/repositorio-ordenes?estado=EN_DESARROLLO">
+        <div class="etiqueta">En desarrollo</div>
+        <div class="valor" id="indDesarrollo">–</div>
+        <div class="detalle">Ya no admiten cambios</div>
+    </a>
+    <a class="tarjeta tarjeta-roja" href="/ebr/repositorio-ordenes?estado=ELIMINADA">
+        <div class="etiqueta">Eliminadas</div>
+        <div class="valor" id="indEliminadas">–</div>
+        <div class="detalle">Conservadas con su motivo</div>
+    </a>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (async function () {
+        const yo = await EBR.iniciar();
+        document.getElementById('saludo').textContent = `Bienvenido, ${yo.nombre_completo || yo.username}`;
+        const r = await EBR.api('/ebr/indicadores/ordenes');
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje(document.getElementById('mensajeInicio'), e.mensaje, 'error'); return; }
+        const i = await r.json();
+        document.getElementById('indTotal').textContent = EBR.numero(i.total);
+        document.getElementById('indCargadas').textContent = EBR.numero(i.cargadas);
+        document.getElementById('indDesarrollo').textContent = EBR.numero(i.en_desarrollo);
+        document.getElementById('indEliminadas').textContent = EBR.numero(i.eliminadas);
+    })();
+</script>
+{% endblock %}
