@@ -1,12 +1,12 @@
 # scripts/preparar_bd_pruebas.py
 # Prepara la base de datos de PRUEBAS: la crea si no existe, crea todas las tablas
-# (incluidas las de CU-03) y registra dos usuarios de prueba: uno ADMIN y uno USER.
+# (incluidas las de CU-03 y CU-04) y registra dos usuarios de prueba: uno ADMIN y uno USER.
 #
 # Uso (desde la carpeta PRUEBAS, con el entorno virtual activado):
 #     python scripts\preparar_bd_pruebas.py
 #
 # Opciones:
-#     --reiniciar-ordenes   Borra y vuelve a crear SOLO las tablas de órdenes de trabajo (CU-03).
+#     --reiniciar-ordenes   Borra y vuelve a crear SOLO las tablas de órdenes de trabajo (CU-03) y sus formatos (CU-04).
 #                           Necesario cuando cambia la estructura de esas tablas. Borra las órdenes de prueba.
 #     --restablecer-claves  Vuelve a pedir la contraseña de admin_pruebas y usuario_pruebas.
 import argparse
@@ -54,14 +54,18 @@ from app.core.seguridad_cifrado import obtener_password_hash
 
 from sqlalchemy import inspect
 
+# CU-04 depende de las órdenes: sus formatos se borran junto con ellas
+TABLAS_CU04 = ["registros_linea_formato", "documentos_formato"]
 TABLAS_CU03 = ["lineas_material_orden", "versiones_orden_trabajo", "ordenes_trabajo", "archivos_carga_orden"]
 inspector = inspect(engine)
 if opciones.reiniciar_ordenes:
     with engine.begin() as conexion:
-        for tabla in TABLAS_CU03:
+        if inspector.has_table("firmas_electronicas"):
+            conexion.execute(text("DELETE FROM firmas_electronicas WHERE entidad = 'documentos_formato'"))
+        for tabla in TABLAS_CU04 + TABLAS_CU03:
             conexion.execute(text(f'DROP TABLE IF EXISTS "{tabla}" CASCADE'))
         conexion.execute(text("DROP TYPE IF EXISTS estado_orden_enum"))  # tipo de la versión anterior de CU-03
-    print("[OK] Tablas de órdenes de trabajo (CU-03) eliminadas para recrearlas.")
+    print("[OK] Tablas de órdenes de trabajo (CU-03) y de sus formatos (CU-04) eliminadas para recrearlas.")
 elif inspector.has_table("ordenes_trabajo"):
     columnas = {c["name"] for c in inspector.get_columns("ordenes_trabajo")}
     if "version" not in columnas:
@@ -70,6 +74,24 @@ elif inspector.has_table("ordenes_trabajo"):
             "Ejecute:  python scripts\\preparar_bd_pruebas.py --reiniciar-ordenes\n"
             "(borra solo las órdenes de prueba; los usuarios y el Audit Trail se conservan)."
         )
+
+# CU-04 ajuste: DESV pasó a DEV (devuelto) y "Análisis y observaciones" a "Lotes de materiales".
+# Renombra las columnas si la base tiene la estructura anterior (no borra datos).
+inspector = inspect(engine)
+if inspector.has_table("registros_linea_formato"):
+    columnas = {c["name"] for c in inspector.get_columns("registros_linea_formato")}
+    with engine.begin() as conexion:
+        if "desv" in columnas and "dev" not in columnas:
+            conexion.execute(text('ALTER TABLE registros_linea_formato RENAME COLUMN desv TO dev'))
+            print("[OK] Columna desv renombrada a dev (DEV = devuelto).")
+        if "analisis_observaciones" in columnas and "lotes_materiales" not in columnas:
+            conexion.execute(text('ALTER TABLE registros_linea_formato RENAME COLUMN analisis_observaciones TO lotes_materiales'))
+            print("[OK] Columna analisis_observaciones renombrada a lotes_materiales.")
+        # CONS ahora es ROT + EXC: se recalcula solo en formatos sin firmas (los firmados no se tocan)
+        conexion.execute(text(
+            "UPDATE registros_linea_formato r SET cons = COALESCE(r.exc, 0) + COALESCE(r.rot, 0) "
+            "FROM documentos_formato d WHERE d.id = r.documento_id AND d.estado = 'BORRADOR' "
+            "AND (r.exc IS NOT NULL OR r.rot IS NOT NULL)"))
 
 Base.metadata.create_all(engine)
 print("[OK] Tablas verificadas: " + ", ".join(sorted(Base.metadata.tables)))

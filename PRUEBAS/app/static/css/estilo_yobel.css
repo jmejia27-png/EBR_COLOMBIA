@@ -280,3 +280,115 @@ a.tarjeta:hover { box-shadow: 0 8px 22px rgba(20, 23, 26, 0.1); transform: trans
     .tabla thead th, .tabla td { padding: 9px 10px; }
     .tarjeta .valor { font-size: 2rem; }
 }
+
+/* =====================================================================
+   CU-04 · Desarrollo de la orden (formato tipo hoja, firmas, vista previa)
+   ===================================================================== */
+.estado-SIN_INICIAR       { background: var(--fondo); color: var(--texto-suave); }
+.estado-BORRADOR          { background: rgba(89, 193, 230, 0.16); color: var(--azul-yobel-oscuro); }
+.estado-FIRMADO_DIGITADOR { background: var(--ambar-claro); color: var(--ambar); }
+.estado-COMPLETADO        { background: var(--verde-claro); color: var(--verde-oscuro); }
+
+.barra-formato {
+    position: sticky; top: 64px; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    background: rgba(244, 246, 248, 0.94); backdrop-filter: blur(6px);
+    padding: 10px 0; margin: -6px 0 12px; border-bottom: 1px solid var(--linea);
+}
+.barra-formato .espacio { flex: 1; }
+.estado-guardado { font-size: 0.82rem; color: var(--texto-suave); display: inline-flex; align-items: center; gap: 6px; }
+.estado-guardado::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--verde); }
+.estado-guardado.pendiente { color: var(--ambar); font-weight: 600; }
+.estado-guardado.pendiente::before { background: var(--amarillo-oscuro); }
+.estado-guardado.bloqueado::before { background: var(--texto-suave); }
+.btn-guardar-hoja { background: linear-gradient(135deg, #2E7D4C, #217346); color: #FFFFFF; }
+.btn-guardar-hoja:hover:not(:disabled) { background: linear-gradient(135deg, #217346, #185C37); }
+.atajo { font-size: 0.68rem; font-weight: 600; opacity: 0.8; border: 1px solid rgba(255,255,255,0.5); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+
+.hoja {
+    background: #FFFFFF; border: 1px solid var(--linea); border-radius: var(--radio); box-shadow: var(--sombra);
+    padding: 22px 22px 26px; border-top: 4px solid var(--amarillo);
+}
+.hoja-encabezado { display: grid; grid-template-columns: 1fr minmax(0, 2fr) 1fr; gap: 16px; align-items: start; margin-bottom: 18px; }
+.hoja-titulo { text-align: center; grid-column: 2; }
+.hoja-titulo .codigo-producto { font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1.1; }
+.hoja-titulo .descripcion-producto { font-size: 1rem; margin-top: 4px; }
+.hoja-titulo .dato-orden { font-size: 0.8rem; color: var(--texto-suave); font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.hoja-datos { grid-column: 3; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 0.86rem; }
+.hoja-datos label, .hoja-datos .etq { font-weight: 700; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.hoja-datos input { padding: 7px 9px; font-size: 0.9rem; }
+.hoja-datos .fijo { padding: 7px 9px; border-radius: 8px; background: var(--fondo); border: 1px dashed var(--linea); color: var(--texto); font-weight: 600; }
+.hoja-datos .fijo.suave { font-weight: 400; color: var(--texto-suave); font-size: 0.8rem; }
+
+.rejilla-contenedor { overflow-x: auto; border: 1px solid #C9D3DB; border-radius: 10px; }
+table.rejilla { width: 100%; min-width: 980px; border-collapse: collapse; font-size: 0.88rem; }
+.rejilla th {
+    background: var(--negro-yobel); color: #FFFFFF; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 9px 8px; text-align: left; border-right: 1px solid #2D3339; white-space: nowrap;
+}
+.rejilla th.fija { background: #3A4148; }
+.rejilla th .candado { opacity: 0.75; margin-right: 4px; }
+.rejilla td { border: 1px solid #DCE3E9; padding: 0; vertical-align: top; }
+.rejilla td.fija { background: #F1F3F5; color: #3B4650; padding: 8px 9px; }
+.rejilla td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rejilla input, .rejilla textarea {
+    width: 100%; border: 0; border-radius: 0; background: transparent; padding: 8px 9px; font: inherit; color: var(--texto);
+    min-height: 36px; resize: none; box-shadow: none;
+}
+.rejilla input { text-align: right; font-variant-numeric: tabular-nums; }
+.rejilla textarea { min-height: 36px; line-height: 1.35; overflow: hidden; }
+.rejilla input:focus, .rejilla textarea:focus { outline: 2px solid var(--azul-yobel); outline-offset: -2px; background: #F3FBFE; box-shadow: none; }
+.rejilla input.invalido { background: var(--rojo-claro); outline: 2px solid var(--rojo); outline-offset: -2px; }
+.rejilla input:disabled, .rejilla textarea:disabled { color: var(--texto); -webkit-text-fill-color: var(--texto); cursor: default; }
+.rejilla tbody tr:hover td.fija { background: #E9EDF0; }
+.col-desc { min-width: 230px; } .col-cod { width: 120px; } .col-cant { width: 110px; } .col-num { width: 104px; } .col-obs { min-width: 230px; }
+.leyenda-hoja { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: var(--texto-suave); margin: 10px 2px 0; }
+.leyenda-hoja span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; border: 1px solid #C9D3DB; }
+.leyenda-hoja .l-fija::before { background: #F1F3F5; }
+.leyenda-hoja .l-edit::before { background: #FFFFFF; }
+.leyenda-hoja .l-nota::before { display: none; }
+.leyenda-hoja .l-calc::before { background: #FFF8D6; }
+.rejilla th small { display: block; font-size: 0.62rem; font-weight: 500; text-transform: none; letter-spacing: 0; opacity: 0.8; white-space: normal; }
+.rejilla th.calculada { background: #3A4148; }
+.rejilla td.calc { background: #FFF8D6; color: var(--negro); font-weight: 700; padding: 8px 9px; text-align: right; font-variant-numeric: tabular-nums; }
+.hoja-datos input.invalido { border-color: var(--rojo); background: var(--rojo-claro); }
+.ayuda-linea { font-size: 0.74rem; color: var(--texto-suave); margin-top: -2px; }
+.ayuda-linea.error { color: var(--rojo); font-weight: 600; }
+
+.firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 22px; }
+.caja-firma { border: 1px solid #C9D3DB; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-height: 168px; }
+.caja-firma .titulo-firma { background: #F1F3F5; padding: 8px 12px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; gap: 8px; }
+.caja-firma .cuerpo-firma { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 14px; gap: 6px; }
+.firma-trazo { font-family: "Segoe Script", "Lucida Handwriting", "Brush Script MT", cursive; font-size: 1.6rem; color: #14335F; line-height: 1.2; padding: 0 12px 4px; border-bottom: 1px solid var(--negro); min-width: 70%; }
+.firma-datos { font-size: 0.8rem; color: var(--texto-suave); }
+.firma-datos strong { color: var(--texto); }
+.firma-pendiente { color: var(--texto-suave); font-size: 0.86rem; }
+.firma-linea-vacia { width: 70%; border-bottom: 1px dashed #AEB8C2; height: 34px; }
+
+.lista-firmantes { max-height: 300px; overflow-y: auto; border: 1px solid var(--linea); border-radius: 10px; margin-top: 10px; }
+.firmante { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: #FFFFFF; border: 0; border-bottom: 1px solid var(--linea); padding: 10px 12px; font: inherit; cursor: pointer; color: var(--texto); }
+.firmante:last-child { border-bottom: 0; }
+.firmante:hover:not(:disabled), .firmante:focus-visible { background: #FFFCE6; outline: none; }
+.firmante:disabled { cursor: not-allowed; opacity: 0.55; }
+.firmante .iniciales { width: 34px; height: 34px; border-radius: 50%; background: var(--degrade-marca); display: grid; place-items: center; font-weight: 700; font-size: 0.8rem; flex: none; }
+.firmante .quien { flex: 1; min-width: 0; }
+.firmante .quien strong { display: block; }
+.firmante .quien small { color: var(--texto-suave); }
+.chip-rol { font-size: 0.68rem; font-weight: 700; border-radius: 10px; padding: 2px 8px; background: var(--negro-yobel); color: var(--amarillo); }
+.chip-rol.user { background: var(--fondo); color: var(--texto-suave); }
+.firmante-elegido { display: flex; align-items: center; gap: 12px; background: var(--fondo-suave); border: 1px solid var(--linea); border-left: 4px solid var(--amarillo); border-radius: 10px; padding: 12px; }
+.pasos-token { margin: 14px 0 6px; padding-left: 20px; font-size: 0.88rem; }
+.pasos-token li { margin-bottom: 4px; }
+.input-token { font-size: 1.6rem !important; letter-spacing: 0.6em; text-align: center; font-weight: 700; max-width: 220px; margin: 0 auto; display: block; }
+
+.modal-pdf { max-width: 1100px; padding: 18px; }
+.marco-pdf { width: 100%; height: 72vh; border: 1px solid var(--linea); border-radius: 10px; background: #525659; }
+
+@media (max-width: 900px) {
+    .hoja { padding: 14px; }
+    .hoja-encabezado { grid-template-columns: 1fr; }
+    .hoja-titulo, .hoja-datos { grid-column: 1; }
+    .hoja-titulo .codigo-producto { font-size: 1.5rem; }
+    .firmas { grid-template-columns: 1fr; }
+    .barra-formato .btn, .barra-formato .btn-azul { flex: 1 1 140px; }
+    .marco-pdf { height: 64vh; }
+}

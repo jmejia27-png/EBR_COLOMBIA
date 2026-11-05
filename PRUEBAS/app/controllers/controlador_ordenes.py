@@ -91,7 +91,7 @@ async def pantalla_detalle_orden(request: Request, orden_id: uuid.UUID):
 
 @router.get("/orden-trabajo/{orden_id}/desarrollo", response_class=HTMLResponse)
 async def pantalla_desarrollo_orden(request: Request, orden_id: uuid.UUID):
-    """Punto de entrada de CU-04 (aún no desarrollado)."""
+    """Pantalla de CU-04 Desarrollo de la orden (formato 03131 V2). La API está en controlador_desarrollo."""
     return templates.TemplateResponse(request=request, name="desarrollo_orden_ebr.html", context={"orden_id": str(orden_id)})
 
 
