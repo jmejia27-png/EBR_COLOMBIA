@@ -1,48 +1,472 @@
 {% extends "base_ebr.html" %}
-{% set menu_activo = 'ordenes' %}
+{% set menu_activo = 'desarrollo' %}
 {% block titulo %}Desarrollo de la orden{% endblock %}
-{% block titulo_barra %}Desarrollo de la orden <span id="migaOrden"></span>{% endblock %}
+{% block titulo_barra %}<a href="/ebr/desarrollo-ordenes" style="text-decoration:none">Desarrollo de órdenes</a> / <span id="migaOrden"></span>{% endblock %}
 
 {% block contenido %}
-<div class="encabezado-pagina">
-    <div>
-        <h1>Desarrollo de la orden <span id="desNumero"></span></h1>
-        <p>CU-04 · Desarrollo de la orden de trabajo</p>
+<div id="mensajeCarga" class="mensaje"></div>
+
+<div id="pantalla" class="oculto">
+    <div class="encabezado-pagina">
+        <div>
+            <h1>Orden <span id="tNumero"></span> · Formato <span id="tFormato"></span> <span id="tEstado"></span></h1>
+            <p id="tNombreFormato">Orden de trabajo</p>
+        </div>
+        <a class="btn btn-secundario" id="btnVolver" href="/ebr/repositorio-ordenes">VOLVER A LA ORDEN</a>
     </div>
-    <a class="btn btn-secundario" id="btnVolver" href="/ebr/repositorio-ordenes">VOLVER A LA ORDEN</a>
+
+    <!-- ================= BARRA DE ACCIONES ================= -->
+    <div class="barra-formato">
+        <button type="button" class="btn btn-guardar-hoja oculto" id="btnGuardar" title="Guardar (Ctrl+S)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v6h8V3"/><rect x="7" y="13" width="10" height="8"/></svg>
+            GUARDAR <span class="atajo">Ctrl+S</span>
+        </button>
+        <button type="button" class="btn btn-azul" id="btnPrevisualizar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            PREVISUALIZAR
+        </button>
+        <button type="button" class="btn oculto" id="btnDescargar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+            DESCARGAR PDF
+        </button>
+        <span class="espacio"></span>
+        <span class="estado-guardado" id="estadoGuardado"></span>
+    </div>
+
+    <div id="mensajeFormato" class="mensaje"></div>
+
+    <!-- ================= HOJA DEL FORMATO ================= -->
+    <section class="hoja" aria-label="Formato de la orden de trabajo">
+        <div class="hoja-encabezado">
+            <div class="hoja-titulo">
+                <div class="codigo-producto" id="hCodigoProducto"></div>
+                <div class="descripcion-producto" id="hDescripcionProducto"></div>
+                <div class="dato-orden" id="hDatoOrden"></div>
+            </div>
+            <div class="hoja-datos">
+                <span class="etq">Código</span><span class="fijo" id="hCodigoFormato"></span>
+                <label for="hLote">Lote</label><input type="text" id="hLote" maxlength="30" autocomplete="off" data-encabezado>
+                <label for="hVencimiento">Fecha vencimiento</label><input type="date" id="hVencimiento" data-encabezado>
+                <label for="hLinea">Línea(s)</label><input type="text" id="hLinea" maxlength="30" autocomplete="off" placeholder="Ej: 1-2-3" data-encabezado>
+                <span></span><small class="ayuda-linea" id="hLineaAyuda">Varias líneas separadas por guion (1-2-3)</small>
+                <span class="etq">Fecha</span><span class="fijo" id="hFecha"></span>
+            </div>
+        </div>
+
+        <div class="rejilla-contenedor">
+            <table class="rejilla" id="rejilla">
+                <thead>
+                    <tr>
+                        <th class="fija col-desc"><span class="candado" aria-hidden="true">🔒</span>Descripción del producto</th>
+                        <th class="fija col-cod"><span class="candado" aria-hidden="true">🔒</span>Código del producto</th>
+                        <th class="fija col-cant" style="text-align:right"><span class="candado" aria-hidden="true">🔒</span>Cantidad</th>
+                        <th class="col-num" style="text-align:right">Excedente</th>
+                        <th class="col-num" style="text-align:right">Devuelto</th>
+                        <th class="col-num" style="text-align:right">Roto</th>
+                        <th class="col-num calculada" style="text-align:right" title="Se calcula automáticamente: Roto + Excedente">Consumido</th>
+                        <th class="col-obs">Lotes de materiales</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoRejilla"></tbody>
+            </table>
+        </div>
+
+        <div class="firmas" id="firmas"></div>
+    </section>
 </div>
 
-<div class="mensaje info" style="display:block">
-    El caso de uso CU-04 aún no está desarrollado. La orden ya quedó en estado <strong>En desarrollo</strong>:
-    desde este momento no se puede actualizar con una nueva versión ni eliminar.
+<!-- ================= MODAL: VISTA PREVIA ================= -->
+<div class="overlay" id="overlayPdf" role="dialog" aria-modal="true" aria-labelledby="tituloPdf">
+    <div class="modal modal-ancho modal-pdf">
+        <div class="encabezado-pagina" style="margin-bottom:10px">
+            <div><h2 id="tituloPdf" style="margin:0">Vista previa del formato</h2>
+                <p class="subtitulo" id="subtituloPdf" style="margin:2px 0 0"></p></div>
+            <div class="filtros">
+                <a class="btn btn-secundario btn-sm" id="abrirPdf" target="_blank" rel="noopener">ABRIR EN PESTAÑA NUEVA</a>
+                <button type="button" class="btn btn-sm" data-cerrar="overlayPdf">CERRAR</button>
+            </div>
+        </div>
+        <iframe class="marco-pdf" id="marcoPdf" title="Vista previa del PDF"></iframe>
+    </div>
 </div>
 
-<section class="card">
-    <div class="ficha" id="ficha">
-        <div class="dato dato-principal"><span>Producto</span><strong id="desProducto">–</strong></div>
-        <div class="dato dato-principal"><span>Código</span><strong id="desCodigo">–</strong></div>
-        <div class="dato dato-principal"><span>Cantidad</span><strong id="desCantidad">–</strong></div>
-        <div class="dato"><span>Estado</span><strong id="desEstado">–</strong></div>
+<!-- ================= MODAL: FIRMAR ================= -->
+<div class="overlay" id="overlayFirma" role="dialog" aria-modal="true" aria-labelledby="tituloFirma">
+    <div class="modal">
+        <h2 id="tituloFirma">Firmar</h2>
+        <p class="subtitulo" id="subtituloFirma"></p>
+
+        <div id="pasoElegir">
+            <div class="campo" style="margin-bottom:0">
+                <label for="buscarFirmante">Seleccione su usuario</label>
+                <input type="search" id="buscarFirmante" placeholder="Buscar por nombre o usuario" autocomplete="off">
+            </div>
+            <div class="lista-firmantes" id="listaFirmantes"></div>
+            <p class="ayuda">Solo los usuarios con rol ADMIN pueden firmar.</p>
+        </div>
+
+        <div id="pasoToken" class="oculto">
+            <div class="firmante-elegido" id="firmanteElegido"></div>
+            <ol class="pasos-token">
+                <li>Abra el <a href="/otp/" target="_blank" rel="noopener"><strong>Generador de Tokens</strong></a> y valide su usuario y contraseña.</li>
+                <li>Copie el código de 4 dígitos (vigencia de 60 segundos).</li>
+                <li>Escríbalo aquí y seleccione FIRMAR.</li>
+            </ol>
+            <div class="campo">
+                <label for="tokenFirma" style="text-align:center">Token</label>
+                <input type="text" id="tokenFirma" class="input-token" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="····">
+            </div>
+        </div>
+
+        <div id="mensajeFirma" class="mensaje"></div>
+        <div class="botonera">
+            <button type="button" class="btn btn-secundario" data-cerrar="overlayFirma">CANCELAR</button>
+            <button type="button" class="btn btn-secundario oculto" id="btnCambiarFirmante">CAMBIAR USUARIO</button>
+            <button type="button" class="btn oculto" id="btnConfirmarFirma" disabled>FIRMAR</button>
+        </div>
     </div>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(async function () {
+(function () {
+    'use strict';
     const ORDEN_ID = {{ orden_id | tojson }};
+    const API = `/ebr/desarrollo/${encodeURIComponent(ORDEN_ID)}/formato`;
     const $ = id => document.getElementById(id);
-    await EBR.iniciar();
-    $('btnVolver').href = `/ebr/orden-trabajo/${encodeURIComponent(ORDEN_ID)}`;
-    const r = await EBR.api(`/ebr/ordenes/${encodeURIComponent(ORDEN_ID)}`);
-    if (!r.ok) return;
-    const o = await r.json();
-    $('desNumero').textContent = o.numero_orden;
-    $('migaOrden').textContent = `· ${o.numero_orden}`;
-    $('desProducto').textContent = o.descripcion;
-    $('desCodigo').textContent = o.pt;
-    $('desCantidad').textContent = EBR.numero(o.cantidad_pt);
-    $('desEstado').innerHTML = EBR.estado(o.estado);
+    const { esc, numero } = EBR;
+    const CAMPOS_NUM = ['exc', 'dev', 'rot'];   // CONS no se digita: es ROT + EXC
+    const NOMBRES_FORMATO = { SIN_INICIAR: 'Sin iniciar', BORRADOR: 'En diligenciamiento', FIRMADO_DIGITADOR: 'Pendiente firma supervisor', COMPLETADO: 'Completado' };
+
+    let yo = null, datos = null, sucio = false, urlPdf = null, rolFirmando = null, firmante = null, ocupado = false;
+
+    const fechaCorta = iso => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
+    const fechaHora = iso => iso ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'medium' }) : '';
+    const aPantalla = v => (v === null || v === undefined) ? '' : String(v).replace('.', ',');
+
+    function cerrar(id) {
+        $(id).classList.remove('visible');
+        if (id === 'overlayPdf') { $('marcoPdf').removeAttribute('src'); }
+    }
+    document.querySelectorAll('[data-cerrar]').forEach(b => b.addEventListener('click', () => cerrar(b.dataset.cerrar)));
+
+    // ------------------------------------------------------------------ pintar
+    function pintar(d) {
+        datos = d;
+        const o = d.orden, doc = d.documento, editar = d.permisos.editar;
+        document.title = `Desarrollo OT ${o.numero_orden} · Yobel EBR`;
+        $('migaOrden').textContent = `Orden ${o.numero_orden}`;
+        $('tNumero').textContent = o.numero_orden;
+        $('tFormato').textContent = `${d.formato.codigo} ${d.formato.version}`;
+        $('tNombreFormato').textContent = `${d.formato.nombre} · CU-04 Desarrollo de la orden`;
+        const est = doc.existe ? doc.estado : 'SIN_INICIAR';
+        $('tEstado').innerHTML = `<span class="estado estado-${esc(est)}">${esc(NOMBRES_FORMATO[est] || est)}</span>`;
+        $('btnVolver').href = `/ebr/orden-trabajo/${encodeURIComponent(o.id)}`;
+
+        $('hCodigoProducto').textContent = o.pt;
+        $('hDescripcionProducto').textContent = o.descripcion;
+        $('hDatoOrden').textContent = `Orden de trabajo N.º ${o.numero_orden} · Cantidad ${numero(o.cantidad_pt)}`;
+        $('hCodigoFormato').textContent = `${d.formato.codigo} ${d.formato.version}`;
+        $('hLote').value = doc.lote || '';
+        $('hVencimiento').value = doc.fecha_vencimiento || '';
+        $('hLinea').value = doc.linea || '';
+        validarLineas();
+        $('hFecha').textContent = doc.fecha_documento ? fechaCorta(doc.fecha_documento) : 'Se asigna al guardar por primera vez';
+        $('hFecha').classList.toggle('suave', !doc.fecha_documento);
+        if (doc.fecha_documento) $('hVencimiento').min = doc.fecha_documento;
+        document.querySelectorAll('[data-encabezado]').forEach(i => { i.disabled = !editar; });
+
+        $('cuerpoRejilla').innerHTML = d.filas.map((f, i) => `
+            <tr data-linea="${esc(f.linea_id)}">
+                <td class="fija">${esc(f.descripcion)}</td>
+                <td class="fija">${esc(f.codigo)}</td>
+                <td class="fija num">${numero(f.cantidad)} <small>${esc(f.um)}</small></td>
+                ${CAMPOS_NUM.map(c => `<td><input type="text" inputmode="decimal" data-campo="${c}" data-fila="${i}" value="${esc(aPantalla(f[c]))}" ${editar ? '' : 'disabled'} aria-label="${c.toUpperCase()} ${esc(f.codigo)}"></td>`).join('')}
+                <td class="calc num" data-cons="${i}" title="Roto + Excedente">${esc(aPantalla(f.cons))}</td>
+                <td><textarea rows="1" data-campo="lotes_materiales" data-fila="${i}" maxlength="500" ${editar ? '' : 'disabled'} aria-label="Lotes de materiales ${esc(f.codigo)}">${esc(f.lotes_materiales || '')}</textarea></td>
+            </tr>`).join('') || '<tr><td colspan="8" class="vacio">La orden no tiene materiales.</td></tr>';
+        pintarFirmas();
+        $('btnGuardar').classList.toggle('oculto', !editar);
+        $('btnDescargar').classList.toggle('oculto', !d.permisos.descargar_pdf);
+        marcarSucio(false);
+        $('pantalla').classList.remove('oculto');
+        document.querySelectorAll('.rejilla textarea').forEach(ajustarAlto);   // con la pantalla visible
+    }
+
+    function pintarFirmas() {
+        const d = datos;
+        $('firmas').innerHTML = d.firmas.map(f => {
+            let cuerpo;
+            if (f.firmada) {
+                cuerpo = `<div class="firma-trazo">${esc(f.nombre_completo)}</div>
+                    <div class="firma-datos"><strong>${esc(f.nombre_completo)}</strong> · usuario ${esc(f.username)}</div>
+                    <div class="firma-datos">Firmado electrónicamente el ${esc(fechaHora(f.firmado_en))}</div>`;
+            } else if (d.permisos.firmar && d.permisos.siguiente_firma === f.rol_firma) {
+                cuerpo = `<div class="firma-linea-vacia"></div>
+                    <button type="button" class="btn btn-sm" data-firmar="${esc(f.rol_firma)}">FIRMAR · ${esc(f.significado.toUpperCase())}</button>`;
+            } else {
+                const motivo = !yo.esAdmin ? 'Solo un usuario ADMIN puede firmar.'
+                    : (f.rol_firma === 'SUPERVISOR' ? 'Disponible después de la firma «Digitado por».' : 'Pendiente de firma.');
+                cuerpo = `<div class="firma-linea-vacia"></div><div class="firma-pendiente">${esc(motivo)}</div>`;
+            }
+            return `<div class="caja-firma"><div class="titulo-firma"><span>${esc(f.significado)}</span><span>Firma</span></div>
+                    <div class="cuerpo-firma">${cuerpo}</div></div>`;
+        }).join('');
+        $('firmas').querySelectorAll('[data-firmar]').forEach(b => b.addEventListener('click', () => abrirFirma(b.dataset.firmar)));
+    }
+
+    function marcarSucio(valor) {
+        sucio = valor;
+        const el = $('estadoGuardado'), doc = datos.documento;
+        el.classList.remove('pendiente', 'bloqueado');
+        if (!datos.permisos.editar) {
+            el.classList.add('bloqueado');
+            el.textContent = doc.estado === 'COMPLETADO' ? 'Formato completo · solo lectura' : 'Datos bloqueados por firma';
+        } else if (sucio) {
+            el.classList.add('pendiente'); el.textContent = 'Cambios sin guardar';
+        } else {
+            el.textContent = doc.existe ? `Guardado ${fechaHora(doc.actualizado_en)} · ${doc.actualizado_por || ''}` : 'Aún no se ha guardado';
+        }
+        $('btnGuardar').disabled = !sucio;
+    }
+
+    function ajustarAlto(t) { t.style.height = 'auto'; t.style.height = Math.max(36, t.scrollHeight) + 'px'; }
+
+    // ------------------------------------------------------------------ edición tipo hoja
+    /** Formato colombiano: coma decimal y punto de miles (1.500 = mil quinientos · 0,094 · 2.244,5).
+        Un punto que no forma grupos de miles se toma como decimal (0.5). */
+    function normalizarNumero(texto) {
+        let t = String(texto || '').trim().replace(/\s/g, '');
+        if (!t) return { ok: true, valor: null };
+        if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+        else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+        return /^-?\d+(\.\d{1,6})?$/.test(t) ? { ok: true, valor: t } : { ok: false };
+    }
+
+    function validarCelda(input) {
+        const r = normalizarNumero(input.value);
+        const negativo = r.ok && r.valor && r.valor.startsWith('-');
+        input.classList.toggle('invalido', !r.ok || negativo);
+        input.title = !r.ok ? 'Solo valores numéricos (máximo 6 decimales)' : (negativo ? 'No puede ser negativo' : '');
+        return r.ok && !negativo;
+    }
+
+    $('pantalla').addEventListener('input', e => {
+        const t = e.target;
+        if (!t.matches('[data-campo], [data-encabezado]') || !datos.permisos.editar) return;
+        if (t.tagName === 'TEXTAREA') ajustarAlto(t);
+        if (t.matches('input[data-campo]')) { validarCelda(t); calcularConsumo(Number(t.dataset.fila)); }
+        if (t.id === 'hLinea') validarLineas();
+        marcarSucio(true);
+    });
+
+    $('rejilla').addEventListener('keydown', e => {
+        const t = e.target;
+        if (!t.matches('[data-campo]')) return;
+        const fila = Number(t.dataset.fila), campo = t.dataset.campo;
+        const ir = destino => { const el = document.querySelector(`[data-campo="${campo}"][data-fila="${destino}"]`); if (el) { el.focus(); if (el.select) el.select(); } };
+        if (e.key === 'Enter' && !(t.tagName === 'TEXTAREA' && e.shiftKey)) { e.preventDefault(); ir(fila + 1); }
+        else if (e.key === 'ArrowDown' && t.tagName === 'INPUT') { e.preventDefault(); ir(fila + 1); }
+        else if (e.key === 'ArrowUp' && t.tagName === 'INPUT') { e.preventDefault(); ir(fila - 1); }
+    });
+
+    /** CONS (consumido) = ROT + EXC. Se recalcula en pantalla; el servidor también lo calcula al guardar. */
+    function calcularConsumo(i) {
+        const celda = document.querySelector(`[data-cons="${i}"]`);
+        const exc = normalizarNumero(document.querySelector(`[data-campo="exc"][data-fila="${i}"]`).value);
+        const rot = normalizarNumero(document.querySelector(`[data-campo="rot"][data-fila="${i}"]`).value);
+        if (!exc.ok || !rot.ok || (exc.valor || '').startsWith('-') || (rot.valor || '').startsWith('-')) { celda.textContent = '—'; return; }
+        if (exc.valor === null && rot.valor === null) { celda.textContent = ''; return; }
+        const total = (Number(exc.valor || 0) * 1e6 + Number(rot.valor || 0) * 1e6) / 1e6;   // evita errores de redondeo
+        celda.textContent = aPantalla(String(Number(total.toFixed(6))));
+    }
+
+    /** Línea(s): una o varias separadas por guion (1-2-3 = 3 líneas). */
+    function validarLineas() {
+        const input = $('hLinea'), ayuda = $('hLineaAyuda');
+        const texto = input.value.trim();
+        let error = '';
+        let partes = [];
+        if (texto) {
+            partes = texto.split('-').map(p => p.trim());
+            if (partes.some(p => !p)) error = 'Separe las líneas con un solo guion (ejemplo: 1-2-3).';
+            else if (partes.some(p => !/^[A-Za-z0-9]{1,10}$/.test(p))) error = 'Use solo letras o números separados por guion.';
+            else if (new Set(partes).size !== partes.length) error = 'Hay una línea repetida.';
+        }
+        input.classList.toggle('invalido', !!error);
+        ayuda.classList.toggle('error', !!error);
+        ayuda.textContent = error || (partes.length ? `${partes.length} línea${partes.length > 1 ? 's' : ''} trabajando: ${partes.join(', ')}`
+                                                        : 'Varias líneas separadas por guion (1-2-3)');
+        return !error;
+    }
+
+    function recolectar() {
+        let validos = validarLineas();
+        const registros = datos.filas.map((f, i) => {
+            const reg = { linea_id: f.linea_id };
+            CAMPOS_NUM.forEach(c => {
+                const input = document.querySelector(`[data-campo="${c}"][data-fila="${i}"]`);
+                if (!validarCelda(input)) validos = false;
+                reg[c] = normalizarNumero(input.value).valor;
+            });
+            reg.lotes_materiales = document.querySelector(`[data-campo="lotes_materiales"][data-fila="${i}"]`).value;
+            return reg;
+        });
+        return {
+            validos,
+            cuerpo: {
+                revision: datos.documento.revision, lote: $('hLote').value, fecha_vencimiento: $('hVencimiento').value || null,
+                linea: $('hLinea').value, registros,
+            },
+        };
+    }
+
+    async function guardar() {
+        if (ocupado || !datos.permisos.editar) return;
+        const { validos, cuerpo } = recolectar();
+        if (!validos) { EBR.mensaje($('mensajeFormato'), 'Hay datos inválidos (marcados en rojo). Corríjalos antes de guardar.', 'error'); return; }
+        ocupado = true; $('btnGuardar').disabled = true;
+        try {
+            const r = await EBR.api(API, { method: 'PUT', json: cuerpo });
+            if (!r.ok) {
+                const e = await EBR.leerError(r);
+                EBR.mensaje($('mensajeFormato'), e.mensaje, r.status === 409 ? 'alerta' : 'error');
+                $('btnGuardar').disabled = false;
+                return;
+            }
+            const d = await r.json();
+            pintar(d);
+            EBR.mensaje($('mensajeFormato'), d.mensaje, 'exito');
+        } finally { ocupado = false; }
+    }
+    $('btnGuardar').addEventListener('click', guardar);
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); guardar(); }
+        if (e.key === 'Escape') { cerrar('overlayPdf'); cerrar('overlayFirma'); }
+    });
+    window.addEventListener('beforeunload', e => { if (sucio) { e.preventDefault(); e.returnValue = ''; } });
+
+    // ------------------------------------------------------------------ vista previa y descarga
+    $('btnPrevisualizar').addEventListener('click', async () => {
+        let cuerpo;
+        if (datos.permisos.editar) {
+            const rec = recolectar();
+            if (!rec.validos) { EBR.mensaje($('mensajeFormato'), 'Hay datos inválidos (marcados en rojo).', 'error'); return; }
+            cuerpo = rec.cuerpo;
+        }
+        $('btnPrevisualizar').disabled = true;
+        try {
+            const r = await EBR.api(`${API}/previsualizar`, cuerpo ? { method: 'POST', json: cuerpo } : { method: 'POST' });
+            if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeFormato'), e.mensaje, 'error'); return; }
+            if (urlPdf) URL.revokeObjectURL(urlPdf);
+            urlPdf = URL.createObjectURL(await r.blob());
+            const completo = datos.documento.estado === 'COMPLETADO';
+            $('subtituloPdf').textContent = completo ? 'Documento definitivo, con las dos firmas.'
+                : (sucio ? 'Borrador con los cambios de la pantalla (aún sin guardar).' : 'Borrador · sin validez hasta completar las firmas.');
+            $('marcoPdf').src = urlPdf;
+            $('abrirPdf').href = urlPdf;
+            $('overlayPdf').classList.add('visible');
+        } finally { $('btnPrevisualizar').disabled = false; }
+    });
+
+    $('btnDescargar').addEventListener('click', async () => {
+        const r = await EBR.api(`${API}/pdf`);
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeFormato'), e.mensaje, 'error'); return; }
+        const nombre = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'formato.pdf';
+        const url = URL.createObjectURL(await r.blob());
+        const a = document.createElement('a');
+        a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+    });
+
+    // ------------------------------------------------------------------ firma
+    function abrirFirma(rol) {
+        if (sucio) { EBR.mensaje($('mensajeFormato'), 'Guarde los cambios antes de firmar: la firma se aplica a la información guardada.', 'alerta'); return; }
+        rolFirmando = rol; firmante = null;
+        const f = datos.firmas.find(x => x.rol_firma === rol);
+        $('tituloFirma').textContent = `Firmar · ${f.significado}`;
+        $('subtituloFirma').textContent = rol === 'DIGITADO_POR'
+            ? 'Al firmar, los datos del formato quedan bloqueados y no se podrán modificar.'
+            : 'Con esta firma el formato queda completo, se genera el PDF definitivo y no admite más cambios.';
+        $('buscarFirmante').value = '';
+        mostrarPaso('elegir');
+        EBR.limpiarMensaje($('mensajeFirma'));
+        $('overlayFirma').classList.add('visible');
+        cargarFirmantes('');
+        $('buscarFirmante').focus();
+    }
+
+    function mostrarPaso(paso) {
+        $('pasoElegir').classList.toggle('oculto', paso !== 'elegir');
+        $('pasoToken').classList.toggle('oculto', paso !== 'token');
+        $('btnCambiarFirmante').classList.toggle('oculto', paso !== 'token');
+        $('btnConfirmarFirma').classList.toggle('oculto', paso !== 'token');
+    }
+
+    const iniciales = n => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+
+    let temporizadorBusqueda = null;
+    async function cargarFirmantes(texto) {
+        const r = await EBR.api(`/ebr/firmantes?busqueda=${encodeURIComponent(texto)}`);
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensajeFirma'), e.mensaje, 'error'); return; }
+        const lista = await r.json();
+        $('listaFirmantes').innerHTML = lista.map(u => `
+            <button type="button" class="firmante" data-id="${esc(u.id)}" ${u.puede_firmar ? '' : 'disabled title="Un usuario USER no puede firmar"'}>
+                <span class="iniciales">${esc(iniciales(u.nombre_completo))}</span>
+                <span class="quien"><strong>${esc(u.nombre_completo)}</strong><small>${esc(u.username)}</small></span>
+                <span class="chip-rol ${u.puede_firmar ? '' : 'user'}">${u.rol === 'admin' ? 'ADMIN' : 'USER'}</span>
+            </button>`).join('') || '<p class="vacio">No se encontraron usuarios.</p>';
+        $('listaFirmantes').querySelectorAll('.firmante:not(:disabled)').forEach(b => b.addEventListener('click', () => {
+            firmante = lista.find(u => u.id === b.dataset.id);
+            $('firmanteElegido').innerHTML = `<span class="iniciales" style="width:40px;height:40px;border-radius:50%;background:var(--degrade-marca);display:grid;place-items:center;font-weight:700">${esc(iniciales(firmante.nombre_completo))}</span>
+                <div><strong>${esc(firmante.nombre_completo)}</strong><br><small class="texto-suave">Usuario ${esc(firmante.username)} · firmará como «${esc(datos.firmas.find(x => x.rol_firma === rolFirmando).significado)}»</small></div>`;
+            $('tokenFirma').value = '';
+            $('btnConfirmarFirma').disabled = true;
+            EBR.limpiarMensaje($('mensajeFirma'));
+            mostrarPaso('token');
+            $('tokenFirma').focus();
+        }));
+    }
+    $('buscarFirmante').addEventListener('input', () => {
+        clearTimeout(temporizadorBusqueda);
+        temporizadorBusqueda = setTimeout(() => cargarFirmantes($('buscarFirmante').value), 250);
+    });
+    $('btnCambiarFirmante').addEventListener('click', () => { firmante = null; mostrarPaso('elegir'); EBR.limpiarMensaje($('mensajeFirma')); $('buscarFirmante').focus(); });
+    $('tokenFirma').addEventListener('input', () => {
+        $('tokenFirma').value = $('tokenFirma').value.replace(/\D/g, '').slice(0, 4);
+        $('btnConfirmarFirma').disabled = $('tokenFirma').value.length !== 4;
+    });
+    $('tokenFirma').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('btnConfirmarFirma').disabled) $('btnConfirmarFirma').click(); });
+
+    $('btnConfirmarFirma').addEventListener('click', async () => {
+        $('btnConfirmarFirma').disabled = true;
+        const r = await EBR.api(`${API}/firmar`, { method: 'POST', json: {
+            rol_firma: rolFirmando, firmante_id: firmante.id, codigo: $('tokenFirma').value, revision: datos.documento.revision } });
+        if (!r.ok) {
+            const e = await EBR.leerError(r);
+            EBR.mensaje($('mensajeFirma'), e.mensaje, 'error');
+            $('tokenFirma').value = '';
+            $('tokenFirma').focus();
+            return;
+        }
+        const d = await r.json();
+        cerrar('overlayFirma');
+        pintar(d);
+        EBR.mensaje($('mensajeFormato'), d.mensaje, 'exito');
+    });
+
+    // ------------------------------------------------------------------ inicio
+    (async () => {
+        yo = await EBR.iniciar();
+        const r = await EBR.api(API);
+        if (!r.ok) {
+            const e = await EBR.leerError(r);
+            EBR.mensaje($('mensajeCarga'), e.mensaje, r.status === 409 ? 'alerta' : 'error');
+            return;
+        }
+        pintar(await r.json());
+    })();
 })();
 </script>
 {% endblock %}

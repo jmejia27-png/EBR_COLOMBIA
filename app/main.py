@@ -8,6 +8,7 @@ from app.controllers import (
     controlador_panel_admin,
     controlador_generador_otp, controlador_autenticacion, controlador_usuarios, controlador_panel_admin, controlador_ebr,
     controlador_ordenes,  # CU-03 Cargar orden de trabajo
+    controlador_desarrollo,  # CU-04 Desarrollo de la orden de trabajo
 )
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.include_router(controlador_usuarios.router)
 app.include_router(controlador_panel_admin.router) 
 app.include_router(controlador_ebr.router)  # Agregar el router del controlador EBR
 app.include_router(controlador_ordenes.router)  # CU-03 Cargar orden de trabajo
+app.include_router(controlador_desarrollo.router)  # CU-04 Desarrollo de la orden de trabajo
 
 # Hoja de estilos y scripts comunes (diseño blanco / azul Yobel)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -34,7 +36,7 @@ async def cabeceras_seguridad(request: Request, call_next):
     respuesta.headers.setdefault("X-Content-Type-Options", "nosniff")
     respuesta.headers.setdefault("X-Frame-Options", "DENY")
     respuesta.headers.setdefault("Referrer-Policy", "same-origin")
-    if request.url.path.startswith(("/ebr/ordenes", "/ebr/indicadores", "/ebr/me")):
+    if request.url.path.startswith(("/ebr/ordenes", "/ebr/indicadores", "/ebr/me", "/ebr/desarrollo/", "/ebr/firmantes")):
         respuesta.headers.setdefault("Cache-Control", "no-store")
     return respuesta
 

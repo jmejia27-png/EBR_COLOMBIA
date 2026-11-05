@@ -1,0 +1,61 @@
+{% extends "base_ebr.html" %}
+{% set menu_activo = 'desarrollo' %}
+{% block titulo %}Desarrollo de órdenes{% endblock %}
+{% block titulo_barra %}Desarrollo de órdenes{% endblock %}
+
+{% block contenido %}
+<div class="encabezado-pagina">
+    <div>
+        <h1>Desarrollo de órdenes</h1>
+        <p>Órdenes en desarrollo y estado de su formato 03131 V2 · Orden de trabajo</p>
+    </div>
+    <div class="filtros">
+        <input type="search" id="buscar" placeholder="Buscar orden, producto o código" maxlength="60">
+    </div>
+</div>
+<div id="mensaje" class="mensaje"></div>
+<div class="tabla-contenedor">
+    <table class="tabla">
+        <thead><tr><th>Orden</th><th>Producto</th><th>Código</th><th class="num">Cantidad</th><th>Formato 03131 V2</th><th>Lote</th><th>Último guardado</th><th>En desarrollo desde</th></tr></thead>
+        <tbody id="cuerpo"><tr><td colspan="8" class="vacio">Cargando…</td></tr></tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const $ = id => document.getElementById(id);
+    const { esc, fecha, numero } = EBR;
+    const NOMBRES = { SIN_INICIAR: 'Sin iniciar', BORRADOR: 'En diligenciamiento', FIRMADO_DIGITADOR: 'Pendiente firma supervisor', COMPLETADO: 'Completado' };
+    let ordenes = [];
+
+    function pintar() {
+        const q = $('buscar').value.trim().toLowerCase();
+        const filas = ordenes.filter(o => !q || [o.numero_orden, o.descripcion, o.pt, o.lote].some(v => (v || '').toLowerCase().includes(q)));
+        $('cuerpo').innerHTML = filas.map(o => `
+            <tr class="clic" tabindex="0" data-id="${esc(o.id)}">
+                <td><strong>${esc(o.numero_orden)}</strong></td><td>${esc(o.descripcion)}</td><td>${esc(o.pt)}</td>
+                <td class="num">${numero(o.cantidad_pt)}</td>
+                <td><span class="estado estado-${esc(o.estado_formato)}">${esc(NOMBRES[o.estado_formato] || o.estado_formato)}</span></td>
+                <td>${esc(o.lote || '')}</td><td>${esc(fecha(o.actualizado_en))}</td>
+                <td>${esc(fecha(o.desarrollo_en))}<br><small class="texto-suave">${esc(o.desarrollo_por || '')}</small></td>
+            </tr>`).join('') || `<tr><td colspan="8" class="vacio">${ordenes.length ? 'Ninguna orden coincide con la búsqueda.' : 'No hay órdenes en desarrollo. Abra una orden del repositorio y seleccione DESARROLLAR ORDEN.'}</td></tr>`;
+        $('cuerpo').querySelectorAll('tr.clic').forEach(tr => {
+            const ir = () => { window.location.href = `/ebr/orden-trabajo/${encodeURIComponent(tr.dataset.id)}/desarrollo`; };
+            tr.addEventListener('click', ir);
+            tr.addEventListener('keydown', e => { if (e.key === 'Enter') ir(); });
+        });
+    }
+
+    $('buscar').addEventListener('input', pintar);
+    (async () => {
+        await EBR.iniciar();
+        const r = await EBR.api('/ebr/desarrollo/ordenes');
+        if (!r.ok) { const e = await EBR.leerError(r); EBR.mensaje($('mensaje'), e.mensaje, 'error'); return; }
+        ordenes = await r.json();
+        pintar();
+    })();
+})();
+</script>
+{% endblock %}

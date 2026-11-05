@@ -4,8 +4,12 @@ from app.models.modelo_bitacora_auditoria import AuditTrail
 from app.models.modelo_orden_trabajo import (
     ArchivoCargaOrden, OrdenTrabajo, LineaMaterialOrden, VersionOrdenTrabajo, EstadoOrden
 )
+from app.models.modelo_formato_ebr import (  # CU-04
+    DocumentoFormato, RegistroLineaFormato, FirmaElectronica, EstadoFormato
+)
 
 __all__ = [
     "Usuario", "TokenOTP", "AuditTrail",
     "ArchivoCargaOrden", "OrdenTrabajo", "LineaMaterialOrden", "VersionOrdenTrabajo", "EstadoOrden",
+    "DocumentoFormato", "RegistroLineaFormato", "FirmaElectronica", "EstadoFormato",
 ]
